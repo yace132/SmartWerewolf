@@ -256,7 +256,7 @@ contract SmartWerewolf {//沒有constructor
         //多餘? CardTypes role;
     }*/
     
-    struct KillConditions{
+   struct KillConditions{
         uint iAmWerewolf;
         //statement1
         //players[i].hand = cardWerewolf1 ** players[i].pokerKey|| 
@@ -281,6 +281,20 @@ contract SmartWerewolf {//沒有constructor
         //v = L1 or L2
         //在簡化的版本這個condition不需要ZKP
     }
+    //ZKP( (i), (h), (k), ContractState )
+    //1 (h) = C1 ** (k) or ..
+    //2 (i) = L1 or ...       --> Ok
+    //3 (h) is someone's hand --> Ok
+    //4 private input 合法
+    //需要or and power
+    //比對zerocash
+    //root --> 
+    //2、3可以轉成簡單的算式
+    //C ** (k) = h1 or c ** (k) = h2 or ...
+    //https://en.wikipedia.org/wiki/Proof_of_knowledge
+    //https://www.cs.jhu.edu/~susan/600.641/scribes/lecture10.pdf
+    //    3.3 protol ramer, Damg ̊ard and Schoenmaker
+    //https://github.com/amiller/instant-poker/blob/master/test_zkproof.py
     
     /*先不要有絕對時間，假設大家會自己做
     struct Time{
