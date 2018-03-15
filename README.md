@@ -1,4 +1,4 @@
-# Smartwerewolf : Play werewolf-game on blockchain !
+# Smartwerewolf : Play werewolf-game on blockchain
 
 ## Features
 
@@ -10,3 +10,6 @@
 $truffle dev 
 $test
 ```
+For windows users, you may have the same issue [here](https://github.com/trufflesuite/truffle/issues/150).
+
+To resolve, check [resolving naming conflicts on windows](http://truffleframework.com/docs/advanced/configuration#resolving-naming-conflicts-on-windows).
