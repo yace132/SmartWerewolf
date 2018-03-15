@@ -17,18 +17,27 @@ contract('SmartWerewolf', function(accounts) {
  
     it("go through the process", async function() {
         var werewolf = await Werewolf.new({from: admin})
+        //day 0 (Prepare the game)
         await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
         await werewolf.createCards({from: admin})
         await werewolf.shuffleCards({from: admin})
         await werewolf.dealCards({from: admin})
+        //Night 1
         var proofCanKill = generateZKProof()
         var victimName = user1 // should be satisfied to the proofCanKill proof
         await werewolf.nightKill(victimName, proofCanKill, {from: admin})
+        await werewolf.openRole(3, 123)
+        //Day 1
         await werewolf.dayVoting(user2)
-        proofCanKill = generateZKProof()
-        victimName = user3 
-        await werewolf.nightKill(victimName, proofCanKill, {from: admin})
         await werewolf.openRole(1, 123)
+        //Night 2
+        proofCanKill = generateZKProof()
+        victimName = user3
+        await werewolf.nightKill(victimName, proofCanKill, {from: admin})
+        await werewolf.openRole(2, 123)
+        //Day 2
+        await werewolf.dayVoting(user4)
+        await werewolf.openRole(3, 123)
     })
 
     it("anther test process if needed", async function() {
