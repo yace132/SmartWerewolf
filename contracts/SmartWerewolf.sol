@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.19;
 //pragma experimental ABIEncoderV2;
 contract SmartWerewolf {//沒有constructor
     Player[] public players;
@@ -10,7 +10,7 @@ contract SmartWerewolf {//沒有constructor
     mapping (address => uint) playerNumOf;
     mapping(uint => uint) public roleOf;// 每個腳色的牌長哪樣, 固定的對照表
     mapping(uint => uint) public living;
-    RoleTypes public winner;
+    string public winner;
     //副詞之後放 
     //Time gameClock;
     
@@ -109,7 +109,7 @@ contract SmartWerewolf {//沒有constructor
         
         //event之後再加 emit GameReady();
         //gameClock.phase=GameIs.Ready;
-        itsNight();
+        //itsNight();
     }
 
     function nightKill(address victimName, uint proofCanKill) public {
@@ -142,11 +142,12 @@ contract SmartWerewolf {//沒有constructor
         players[i].pokerKey=_pokerKey;//公開自己的key會影響其他人的隱私嗎?
         living[uint(_role)]--;
         if(living[uint(RoleTypes.Werewolf)]==living[uint(RoleTypes.Seer)]+living[uint(RoleTypes.Villager)]){
-            winner = RoleTypes.Werewolf;
+            winner = "Werewolves";
         }
         else if(living[uint(RoleTypes.Werewolf)]==0){
-            winner = RoleTypes.Villager;
+            winner = "Humans";
         }
+        
         /*
         if(gameClock.phase==GameIs.CheckingDayDead){
             gameClock.phase=GameIs.Day;
@@ -187,19 +188,19 @@ contract SmartWerewolf {//沒有constructor
         //assume proof is uint256 !!!
     }*/
 
-    function verify(uint proofCanKill, Player victim) internal returns(bool){
+    function verify(uint proofCanKill, Player victim) pure internal returns(bool){
         
         return proofCanKill == 123 && victim.live == true;//TODO: need to be implemented. 只是示意, 假設證明
     }
 
 
-    function itsNight() internal{
+    //function itsNight() internal{
         //event之後再加 emit NightComming("Close your eyes!",
             //"Werewolves, open your eyes",
             //"Werewolves, pick someone to kill!");
         //gameClock.day++;
         //gameClock.phase = GameIs.Night;
-    }
+    //}
     
     //function itsDay(address victimName) internal{
         //event之後再加 emit DayComming("Everybody open your eyes; it's daytime!");    
@@ -225,8 +226,8 @@ contract SmartWerewolf {//沒有constructor
         /*not open:罰錢 open:遊戲繼續*/
     }
 
-    function verifyRole(RoleTypes _role, uint _pokerKey) internal returns(bool){
-        return (_role!=RoleTypes.Unseen && _pokerKey==123);//TODO: need to be implemented. 只是示意, 假設證明
+    function verifyRole(RoleTypes _role, uint _pokerKey) pure internal returns(bool){
+        return (_role!=RoleTypes.Unseen && _pokerKey==456);//TODO: need to be implemented. 只是示意, 假設證明
     }
     
     /* off-chain?
@@ -299,7 +300,6 @@ contract SmartWerewolf {//沒有constructor
     //event NightEnd(string moderatorSay);
     //event DayComming(string moderatorSays);
     //event SentenceToDeath(string moderatorSays,address moderatorIndicates);
-    
     /*modifier before(uint T){
         require(T>0 && block.number<T);
         _;
