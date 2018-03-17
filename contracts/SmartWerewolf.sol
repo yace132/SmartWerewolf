@@ -256,16 +256,15 @@ contract SmartWerewolf {//沒有constructor
         //多餘? CardTypes role;
     }*/
     
-   struct KillConditions{
+   struct KillConditions{//規定只有某個狼人能殺人
         uint iAmWerewolf;
         //statement1
-        //players[i].hand = cardWerewolf1 ** players[i].pokerKey|| 
-        //players[i].hand = cardWerewolf2 ** players[i].pokerKey
+        //players[i].hand = cardWerewolf1 ** players[i].pokerKey
         //private input: hand, pokerKey
         //hand --> 匿名的需求
-        //cardWerewolf1, cardWerewolf2 --> constant
+        //cardWerewolf1 --> constant
         // (h) = C1 ** (k) 證明某人是某人的離散對數
-        //把h當公鑰, k當私鑰 
+        //把h當公鑰, k當私鑰, Schnorr signature
         
         uint iAmLive;
         //statement2
@@ -279,7 +278,7 @@ contract SmartWerewolf {//沒有constructor
         
         uint victimLive;
         //v = L1 or L2
-        //在簡化的版本這個condition不需要ZKP
+        //在簡化的版本這個condition，verifier可以自己檢查
     }
     //ZKP( (i), (h), (k), ContractState )
     //1 (h) = C1 ** (k) or ..
@@ -288,14 +287,42 @@ contract SmartWerewolf {//沒有constructor
     //4 private input 合法
     //需要or and power
     //比對zerocash
-    //root --> 
-    //2、3可以轉成簡單的算式
+    //可以總結簡單的算式
+    //
     //C ** (k) = h1 or c ** (k) = h2 or ...
-    //https://en.wikipedia.org/wiki/Proof_of_knowledge
+    //
+    //1. 用以下的協議證明(interactive)
+    //教學
     //https://www.cs.jhu.edu/~susan/600.641/scribes/lecture10.pdf
     //    3.3 protol ramer, Damg ̊ard and Schoenmaker
+    //論文( 可以cite它 )
+    //https://www.win.tue.nl/~berry/papers/crypto94.pdf
+    //(introduction介紹了甚麼是public coin的protocol, 注意第5章的應用)
+    //
+    //2. 加上Fiat-Shamir transform(轉成non-interactive)
+    //參考
+    //https://en.wikipedia.org/wiki/Fiat%E2%80%93Shamir_heuristic
+    //只要是public coin (verifier的chanllege是uniformly random) 的interactive proof都可以用這個方式轉換
+    //在radom oracle model(承認存在random oracle)，底下是安全的
+    //這個方法來自以下的論文( 可以cite它 )
+    //Amos Fiat and Adi Shamir: How to Prove Yourself: Practical Solutions to Identification and Signature Problems. CRYPTO 1986: pp. 186-194
+    //(當初比較像跟rsa或因數分解有關, 可能大家推廣到不同的協議上, 感覺上像大家公認的一個做法)
+    //
+    //https://en.wikipedia.org/wiki/Proof_of_knowledge
+    //
+    //instant-poker
     //https://github.com/amiller/instant-poker/blob/master/test_zkproof.py
-    
+    //有cite一篇
+    //https://link.springer.com/chapter/10.1007/978-3-540-40974-8_29
+    //考慮到更多的card operation, test_zkproof是實作裡面的舉的例子
+    //
+    //https://www.cryptologie.net/article/193/schnorrs-signature-and-non-interactive-protocols/
+    //有講到transcript的觀念
+
+
+
+
+
     /*先不要有絕對時間，假設大家會自己做
     struct Time{
         GameIs phase;//day or night?
