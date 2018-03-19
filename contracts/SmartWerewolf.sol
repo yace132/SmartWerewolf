@@ -171,6 +171,16 @@ contract SmartWerewolf {//沒有constructor
         //解密到剩最後一層當手牌
     }
     
+    function collectHand() returns(uint256[2][]) {
+        uint256[2][] hands;
+        for(uint i=1; i<=n; i++){
+            if(players[i].live==true){
+                //...TODO
+            }
+
+        }
+
+    }
     /*function collectStatements()public view returns(KillConditions){
         //TODO: need to be implemented. 只是示意
         KillConditions memory statements;//放memory會有問題嗎?
