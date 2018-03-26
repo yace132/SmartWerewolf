@@ -4,7 +4,6 @@ import "./Curve.sol";
 
 library ProofOfPartialKnowledge
 {
-    // Costs ~85000 gas, 2x ecmul, + mulmod, addmod, hash etc. overheads
 	function CreateProof( uint256 secret, uint256 message )
 	    constant internal
 	    returns (uint256[2] out_pubkey, uint256 out_s, uint256 out_e)

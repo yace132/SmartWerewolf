@@ -4,7 +4,7 @@ contract SmartWerewolf {//沒有constructor
     Player[] public players;
     uint[] MPC;
     uint[] public deck;
-    uint n;
+    uint public n;
     uint p = 13;// TODO: mental poker用的group
     uint G = 0x123;// TODO: generator
     mapping (address => uint) playerNumOf;
@@ -171,15 +171,17 @@ contract SmartWerewolf {//沒有constructor
         //解密到剩最後一層當手牌
     }
     
-    function collectHand() returns(uint256[2][]) {
-        uint256[2][] hands;
+    uint constant  MAX_PLAYERS=8;
+
+    function collectHand() view returns(uint256[MAX_PLAYERS]) {
+        uint256[MAX_PLAYERS] hands;
         for(uint i=1; i<=n; i++){
             if(players[i].live==true){
-                //...TODO
+                hands[i]=players[i].hand;
             }
-
         }
-
+        //ShowHand(hands);
+        return hands;
     }
     /*function collectStatements()public view returns(KillConditions){
         //TODO: need to be implemented. 只是示意
@@ -325,10 +327,35 @@ contract SmartWerewolf {//沒有constructor
     //有cite一篇
     //https://link.springer.com/chapter/10.1007/978-3-540-40974-8_29
     //考慮到更多的card operation, test_zkproof是實作裡面的舉的例子
+    //fast mental poker protocol也是改這篇的協議
     //
     //https://www.cryptologie.net/article/193/schnorrs-signature-and-non-interactive-protocols/
     //有講到transcript的觀念
-
+    //
+    //DDH assumption 
+    //參考Dan Boneh. The decision diffiee-hellman problem. Lecture Notes in Computer Science,
+    //1423:48-63, 1998
+    //由破解diffie hellman key exchange來, 也就是computational Diffie-Hellman assumption
+    //DDH assumption難度>CDH
+    //
+    //DDH problem(如果好解, 表示DDH assumption很難達成)
+    //https://crypto.stackexchange.com/questions/5254/explanation-of-the-decision-diffie-hellman-ddh-problem
+    //
+    //zcash原本用的曲線是bn128，參考
+    //https://medium.com/@_garethtdavies/why-zcash-is-set-to-shine-in-2018-2e8c388f35fd
+    //可能就是altbn128
+    //https://eprint.iacr.org/2016/1102.pdf
+    //https://github.com/HarryR/solcrypto/blob/master/contracts/altbn128.sol
+    //https://eprint.iacr.org/2005/133.pdf(怎麼建適合pairing的曲線)
+    //
+    //EASY DECISION-DIFFIE-HELLMAN GROUP(https://eprint.iacr.org/2004/070.pdf)
+    //用pairing解DDH。pairing需要embedding degree小的曲線, 
+    //a fast mental poker可能因為這樣, 所以要求embedding degree大的曲線
+    //
+    //secp256k1不適合pairing
+    //https://safecurves.cr.yp.to/transfer.html
+    //https://groups.google.com/forum/#!topic/pbc-devel/DvDvziTTwFk
+    //secp256k1 參考https://github.com/amiller/instant-poker/blob/master/test_zkproof.py
 
 
 
@@ -351,6 +378,7 @@ contract SmartWerewolf {//沒有constructor
     //event NightEnd(string moderatorSay);
     //event DayComming(string moderatorSays);
     //event SentenceToDeath(string moderatorSays,address moderatorIndicates);
+    event ShowHand(uint256[MAX_PLAYERS] livingHand);
     /*modifier before(uint T){
         require(T>0 && block.number<T);
         _;
