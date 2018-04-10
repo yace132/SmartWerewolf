@@ -1,15 +1,21 @@
 pragma solidity ^0.4.19;
 //pragma experimental ABIEncoderV2;
+import "./CDSProtocol.sol";
 contract SmartWerewolf {//沒有constructor
+    //bullet broad
     Player[] public players;
     uint[] MPC;
     uint[] public deck;
     uint public n;
     uint p = 13;// TODO: mental poker用的group
     uint G = 0x123;// TODO: generator
-    mapping (address => uint) playerNumOf;
+    mapping (address => uint) public playerNumOf;
     mapping(uint => uint) public roleOf;// 每個腳色的牌長哪樣, 固定的對照表
-    mapping(uint => uint) public living;
+    
+    //up-to-date report
+    mapping(uint => uint) public living;//up-to-date report of (# of each role type)
+    address[] public livingPlayers;
+    mapping(address => uint) public theLivingNumOf;
     string public winner;
     //副詞之後放 
     //Time gameClock;
@@ -21,11 +27,11 @@ contract SmartWerewolf {//沒有constructor
         n = _players.length;
         players.length = 1+ n;//常常注意array的長度
         uint i;
-        for (i = 0; i < n; i++) {
-            players[i+1] = Player
+        for (i = 1; i <= n; i++) {
+            players[i] = Player
             (
                 {
-                    id: _players[ i ],  
+                    name: _players[ i-1 ],  
                     live: true, 
                     hand: 0, 
                     role: RoleTypes.Unseen,//記得加enum的type
@@ -33,15 +39,23 @@ contract SmartWerewolf {//沒有constructor
                 }
            ); 
         //從1開始編號
-        playerNumOf[_players[i]] = (i+1);
+        playerNumOf[players[i].name] = i;
         /* 備用: players.push(_players[i]);
         
         live[ _players[i] ] = true;*/
-            //event之後再加 emit JoinGame(i+1, players[i+1].id);
+            //event之後再加 emit JoinGame(i+1, players[i+1].name);
         }
+        
         living[uint(RoleTypes.Werewolf)]=2;
         living[uint(RoleTypes.Seer)]=1;
         living[uint(RoleTypes.Villager)]=n-3;
+
+        livingPlayers.length=n+1;
+        for(i=1;i<=n;i++){
+            livingPlayers[i]=players[i].name;
+            theLivingNumOf[players[i].name]=i;
+        }
+        PlayerReady(n/*, _players*/);
         //event之後再加 emit PlayerReady(n/*, _players*/);
     }
     
@@ -140,7 +154,9 @@ contract SmartWerewolf {//沒有constructor
         uint i = playerNumOf[msg.sender];
         players[i].role = _role;
         players[i].pokerKey=_pokerKey;//公開自己的key會影響其他人的隱私嗎?
+        
         living[uint(_role)]--;
+
         if(living[uint(RoleTypes.Werewolf)]==living[uint(RoleTypes.Seer)]+living[uint(RoleTypes.Villager)]){
             winner = "Werewolves";
         }
@@ -171,9 +187,21 @@ contract SmartWerewolf {//沒有constructor
         //解密到剩最後一層當手牌
     }
     
-    uint constant  MAX_PLAYERS=8;
 
-    function collectHand() view returns(uint256[MAX_PLAYERS]) {
+    function createProof( uint256 secret, uint256 message )
+        constant
+        returns (uint256[2] out_pubkey, uint256 out_s, uint256 out_e)
+    {
+        return CDSProtocol.CreateProof(secret,message);
+    }
+
+    function verifyProof( uint256[2] pubkey, uint256 message, uint256 s, uint256 e )
+        constant
+        returns (bool)
+    {
+        return CDSProtocol.VerifyProof(pubkey, message, s, e);
+    }
+    /*function collectHand() view returns(uint256[MAX_PLAYERS]) {
         uint256[MAX_PLAYERS] hands;
         for(uint i=1; i<=n; i++){
             if(players[i].live==true){
@@ -182,7 +210,44 @@ contract SmartWerewolf {//沒有constructor
         }
         //ShowHand(hands);
         return hands;
-    }
+    }*/
+    
+    /*function collectHand() view returns(uint[MAX_PLAYERS]) {
+        uint256[MAX_PLAYERS] hands=[uint(1),2,3];//can't assign memory to storage reference
+        
+        return hands;
+    }*/
+
+    /*function collectHand() view returns(uint256[]) {
+        uint256[] hands;
+        //http://solidity.readthedocs.io/en/v0.3.1/frequently-asked-questions.html
+        //https://ethereum.stackexchange.com/questions/4467/initialising-structs-to-storage-variables
+        //Uninitialized storage pointer causes terrible errors
+        //storage reference can only be created from state
+        for(uint i=1; i<=n; i++){
+            if(players[i].live==true){
+                hands.push(n+100*i);
+
+            }
+            ShowHand(hands);
+        }
+        return hands;
+    }*/
+
+    /*function collectHand() public view returns(uint256[]) {
+        uint[] memory hands= new uint[](n+1);
+        //memory: dynamic array(decide length runtime), fixed length
+        //stroage: can change length
+        //https://solidity.readthedocs.io/en/develop/types.html#allocating-memory-arrays
+        for(uint i=1; i<=n; i++){
+            if(players[i].live==true){
+                hands[];
+
+            }
+            ShowHand(hands);
+        }
+        return hands;
+    }*/
     /*function collectStatements()public view returns(KillConditions){
         //TODO: need to be implemented. 只是示意
         KillConditions memory statements;//放memory會有問題嗎?
@@ -223,9 +288,18 @@ contract SmartWerewolf {//沒有constructor
         //先殺再公告, 避免在看到event之後搶先發言
     //}
 
-    function killed(/*GameIs t,*/ address name) internal{
-        uint i = playerNumOf[name];
+    function killed(/*GameIs t,*/ address player) internal{
+        uint i = playerNumOf[player];
         players[i].live=false;//禁言
+        uint j= theLivingNumOf[player];
+        
+        for(uint k=j; k<= livingPlayers.length-2 ; k++){
+            livingPlayers[k] = livingPlayers[k+1];
+            theLivingNumOf[livingPlayers[k]]--;
+            
+        }
+        livingPlayers.length--;//automatically delete the last element
+        theLivingNumOf[player]=0;
         /*
         if(t==Night){
             gameClock.phase = GameIs.CheckingNightDead;//等他公布身分
@@ -247,14 +321,15 @@ contract SmartWerewolf {//沒有constructor
 
     }
     */
-
-
+    function numSurvive() view returns(uint){
+        return livingPlayers.length-1;
+    }
     //enum GameIs{NotReady, Ready, Night, Day}
     enum RoleTypes{/*AmbitiousCard*/Unseen, Werewolf, Seer, Villager}
     //enum PlayersAre{CheckingTheDead, DiscussingAndVoting/*...*/}
     //不要分號
     struct Player{
-        address id;
+        address name;
         bool live;
         //備用:uint pokerKey;
         uint hand;
@@ -369,8 +444,8 @@ contract SmartWerewolf {//沒有constructor
 
     //副詞最後再放
     //event StartGame(uint numPlayers);
-    //event JoinGame(uint playerNum, address id);
-    //event PlayerReady(uint numPlayers/*, address[] players*/);
+    //event JoinGame(uint playerNum, address name);
+    event PlayerReady(uint numPlayers/*, address[] players*/);
     //event CardReady(uint numWerewolves, uint numSeer, uint numVillagers);
     //event CardShuffled();
     //event GameReady();
@@ -378,7 +453,7 @@ contract SmartWerewolf {//沒有constructor
     //event NightEnd(string moderatorSay);
     //event DayComming(string moderatorSays);
     //event SentenceToDeath(string moderatorSays,address moderatorIndicates);
-    event ShowHand(uint256[MAX_PLAYERS] livingHand);
+    event ShowHand(uint256[] livingHand);
     /*modifier before(uint T){
         require(T>0 && block.number<T);
         _;
