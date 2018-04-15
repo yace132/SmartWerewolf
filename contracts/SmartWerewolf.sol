@@ -3,7 +3,7 @@ pragma solidity ^0.4.19;
 import "./CDSProtocol.sol";
 import "./OrPoK.sol";
 
-contract SmartWerewolf {//沒有constructor
+contract SmartWerewolf {
     //bullet broad
     Player[] public players;
     uint[] MPC;
@@ -35,7 +35,7 @@ contract SmartWerewolf {//沒有constructor
                 {
                     name: _players[ i-1 ],  
                     live: true, 
-                    hand: 0, 
+                    hand: [uint(0),0], 
                     role: RoleTypes.Unseen,//記得加enum的type
                     pokerKey: 0
                 }
@@ -183,10 +183,13 @@ contract SmartWerewolf {//沒有constructor
     }
     
     function helpDecryptRole() internal {
-        for(uint i=1; i<=n; i++)
-        players[i].hand++;//TODO: need to be implemented
+        for(uint i=1; i<=n; i++){
+        	uint[2] hand = players[i].hand;
+        	hand[0] ++;//TODO: need to be implemented
         //++模擬解密的動作
         //解密到剩最後一層當手牌
+        }
+       
     }
     
     
@@ -339,7 +342,7 @@ contract SmartWerewolf {//沒有constructor
         address name;
         bool live;
         //備用:uint pokerKey;
-        uint hand;
+        uint[2] hand;
         RoleTypes role;
         uint pokerKey;
     }

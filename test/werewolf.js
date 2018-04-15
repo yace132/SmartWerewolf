@@ -24,7 +24,7 @@ contract('SmartWerewolf', function(accounts) {
             let p = await w.players(num)
             let hand=p[2].toString(16)            
             //Note: 2 for hand, check https://www.reddit.com/r/ethdev/comments/6us20e/accessing_struct_value_inside_of_map_using_web3/
-            //console.log(num.toString(10),"0x"+hand)//demo
+            console.log("0x"+hand)//demo
         }
 
     }
