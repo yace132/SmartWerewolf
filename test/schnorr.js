@@ -15,7 +15,7 @@ contract('ZKProof', async(accounts) => {
             console.log('\tinput')
             console.log('\t\tmessage: ',m)
             console.log('\t\tsecret: ',secret)
-            proofOfSignature = await testZKP.createProof(secret,message, {from: admin})
+            proofOfSignature = await testZKP.createProof(secret,message)
             let pb_x=proofOfSignature[0][0].toString(16)
             let pb_y=proofOfSignature[0][1].toString(16)
             let s=proofOfSignature[1].toString(16)

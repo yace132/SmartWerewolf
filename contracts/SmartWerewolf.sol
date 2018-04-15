@@ -1,6 +1,8 @@
 pragma solidity ^0.4.19;
 //pragma experimental ABIEncoderV2;
 import "./CDSProtocol.sol";
+import "./OrPoK.sol";
+
 contract SmartWerewolf {//沒有constructor
     //bullet broad
     Player[] public players;
@@ -187,7 +189,9 @@ contract SmartWerewolf {//沒有constructor
         //解密到剩最後一層當手牌
     }
     
-
+    
+    /*
+    proof and verify use CDSprotocol.sol, use another library
     function createProof( uint256 secret, uint256 message )
         constant
         returns (uint256[2] out_pubkey, uint256 out_s, uint256 out_e)
@@ -201,6 +205,9 @@ contract SmartWerewolf {//沒有constructor
     {
         return CDSProtocol.VerifyProof(pubkey, message, s, e);
     }
+    */
+
+
     /*function collectHand() view returns(uint256[MAX_PLAYERS]) {
         uint256[MAX_PLAYERS] hands;
         for(uint i=1; i<=n; i++){

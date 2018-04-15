@@ -15,7 +15,7 @@ contract('AndPoK', async(accounts) => {
             console.log('\tinput')
             console.log('\t\tmessage: ',m)
             console.log('\t\tsecret: ',secret)
-            proofOfSignature = await testPoK.prove(secret,message,{from: admin})
+            proofOfSignature = await testPoK.prove(secret,message)
             let A =[proofOfSignature[0][0].toString(16),proofOfSignature[0][1].toString(16)]
             let B =[proofOfSignature[1][0].toString(16),proofOfSignature[1][1].toString(16)]
             let getM = proofOfSignature[2]
@@ -30,12 +30,12 @@ contract('AndPoK', async(accounts) => {
         })
 
     /*it("accept correct proof", async function() {
-        let success = await testZKP.verifyProof(proofOfSignature[0],message,proofOfSignature[1],
+        let success = await testPoK.verify(proofOfSignature[0],message,proofOfSignature[1],
             proofOfSignature[2],{from: admin})
         assert(success==true)
-    })
+    })*/
 
-    it("reject reused proof", async function() {
+    /*it("reject reused proof", async function() {
         let m='bye'
         message=web3.fromAscii(m)
         console.log('\tReuse the same proof for new message: ',m)
