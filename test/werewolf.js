@@ -35,9 +35,9 @@ contract('SmartWerewolf', function(accounts) {
         //day 0 (Prepare the game)
         await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
         await werewolf.createCards({from: admin})
-        await werewolf.shuffleCards({from: admin})
-        await werewolf.dealCards({from: admin})
-        
+        //await werewolf.shuffleCards({from: admin})
+        //await werewolf.dealCards({from: admin})
+        /*
         console.log("It's Night 1 ---")
         
         var proofCanKill = generateZKProof()
@@ -63,10 +63,10 @@ contract('SmartWerewolf', function(accounts) {
         w = await werewolf.winner()
         assert.equal(w,"Werewolves","Winner shold be Werewolves.")
         console.log(w,"win");
-        await GetSurviveHands(werewolf)
+        //await GetSurviveHands(werewolf)*/
     })
 
-    it("pass Humans' victory", async function() {
+    /*it("pass Humans' victory", async function() {
         let werewolf = await Werewolf.new({from: admin})
         
         //day 0 (Prepare the game)
@@ -99,7 +99,7 @@ contract('SmartWerewolf', function(accounts) {
         w = await werewolf.winner()
         assert.equal(w,"Humans","Winner shold be Werewolves.")
         console.log(w,"win");
-        await GetSurviveHands(werewolf)
+        //await GetSurviveHands(werewolf)
     })
 
     it("can collect hands ", async function() {
@@ -115,7 +115,7 @@ contract('SmartWerewolf', function(accounts) {
         
         console.log("Start! live players' :")
         
-        await GetSurviveHands(werewolf)
+        //await GetSurviveHands(werewolf)
        
 
         console.log("It's Night 1 ---")
@@ -126,13 +126,13 @@ contract('SmartWerewolf', function(accounts) {
         await werewolf.nightKill(victimName, proofCanKill, {from: admin})
         await werewolf.openRole(3, 456, {from: user1})
         
-       await GetSurviveHands(werewolf)
+        //await GetSurviveHands(werewolf)
 
         console.log("\nIt's Day 1   ---")
         await werewolf.dayVoting(user2)
         await werewolf.openRole(1, 456, {from: user2})
 
-        await GetSurviveHands(werewolf)
+        //await GetSurviveHands(werewolf)
         
         console.log("\nIt's Night 2 ---")
         proofCanKill = generateZKProof()
@@ -142,12 +142,12 @@ contract('SmartWerewolf', function(accounts) {
         var w = await werewolf.winner();//需要等getter function, enum 只能用數字確認
         assert.equal(w, 0, "Winner wasn't determined at that time.")
         
-        await GetSurviveHands(werewolf)
+        //await GetSurviveHands(werewolf)
 
         console.log("\nIt's Day 2   ---")
         await werewolf.dayVoting(user4)
         await werewolf.openRole(3, 456, {from: user4})
-        await GetSurviveHands(werewolf)
+        //await GetSurviveHands(werewolf)
 
         w = await werewolf.winner()
         assert.equal(w,"Werewolves","Winner shold be Werewolves.")
@@ -155,6 +155,6 @@ contract('SmartWerewolf', function(accounts) {
 
        
         
-    })
+    })*/
     
 })
