@@ -22,9 +22,11 @@ contract('SmartWerewolf', function(accounts) {
             let name = await w.livingPlayers(i)
             let num = await w.playerNumOf(name)
             let p = await w.players(num)
-            let hand=p[2].toString(16)            
+            let hand = p[2]
+            let hx = hand[0].toString(16)
+            let hy = hand[1].toString(16)                
             //Note: 2 for hand, check https://www.reddit.com/r/ethdev/comments/6us20e/accessing_struct_value_inside_of_map_using_web3/
-            console.log("0x"+hand)//demo
+            console.log("0x"+hx+hy)//demo
         }
 
     }
@@ -35,9 +37,9 @@ contract('SmartWerewolf', function(accounts) {
         //day 0 (Prepare the game)
         await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
         await werewolf.createCards({from: admin})
-        //await werewolf.shuffleCards({from: admin})
-        //await werewolf.dealCards({from: admin})
-        /*
+        await werewolf.shuffleCards({from: admin})
+        await werewolf.dealCards({from: admin})
+        
         console.log("It's Night 1 ---")
         
         var proofCanKill = generateZKProof()
@@ -63,7 +65,7 @@ contract('SmartWerewolf', function(accounts) {
         w = await werewolf.winner()
         assert.equal(w,"Werewolves","Winner shold be Werewolves.")
         console.log(w,"win");
-        //await GetSurviveHands(werewolf)*/
+        await GetSurviveHands(werewolf)
     })
 
     /*it("pass Humans' victory", async function() {

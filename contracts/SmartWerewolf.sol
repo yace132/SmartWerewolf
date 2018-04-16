@@ -79,14 +79,11 @@ contract SmartWerewolf {
 
     //2-1 印製牌
     //(a) 印牌面   
-    function createCards() public {
-        debug(deck.length);
+    function createCards() public {   
         MPC.length = deck.length = 1+n;
-        debug(uint(1));
         for(uint i=0; i <= n; i++ ){
             prepareDeck(i);
         }
-        debug(2);
         generateMap(MPC[0], deck[0], RoleTypes.Unseen);
         generateMap(MPC[1], deck[1], RoleTypes.Werewolf);
         generateMap(MPC[2], deck[2], RoleTypes.Werewolf);
@@ -94,7 +91,6 @@ contract SmartWerewolf {
         for (uint j = 4; j <= n; j++) {
             generateMap(MPC[j], deck[j], RoleTypes.Villager);
         }
-        debug(3);
     }
     
     //TODO:(b)洗牌、印製牌背  
@@ -147,7 +143,8 @@ contract SmartWerewolf {
 
     function prepareDeck(uint i) internal {
         
-        MPC[ i ] = i % q;
+        MPC[ i ] = (i+123) % q;
+        //avoid use 0. function toZ1 revert at point at infinity
     
     }
     
