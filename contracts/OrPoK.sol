@@ -4,62 +4,50 @@ import "./ECCMath_noconflict.sol";
 import "./Secp256k1_noconflict.sol";
 
 contract OrPoK {
-    //Eason:  PK{(x):A = xG and B = xH}
-    //Eason:  https://en.wikipedia.org/wiki/Jacobian_curve
-    //use Jacobi  curve representation to speed up and be against side channel attack 
     
-    // Modulus for public keys
-    // Eason: elliptic curve in Zp
-    
-    //debug parameters
     uint constant p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;
-    //uint constant p = 97;
 
     // Base point (generator) G
     // Eason: represent werewolf
     uint constant Gx =0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
     uint constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
-    //0,7
-    /*// Base point (generator) G
     uint constant Hx = 0xEC70EDA5ABD3416F239EF65D4B288717C4CF7BA469776869F2AAE2E00DF74DCA;
-    uint constant Hy = 0xEF7824FF7E7F248BF1C94F61C04A69C4D9DB232C86D85478B97E87753114DE2D;*/
-    //Eason: oredr of elliptic curve
-    //coefficient in Zq 
+    uint constant Hy = 0xEF7824FF7E7F248BF1C94F61C04A69C4D9DB232C86D85478B97E87753114DE2D;
     
 
+    //Eason: oredr of elliptic curve
+    //coefficient in Zq 
     uint public constant q = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
 
 
 
     uint[2] public G;
-    //uint[2] H;
+    uint[2] public H;
     
-    //uint[2] public defaultHand;
     uint[2][] public problems;//ECDLP for G
-    //TODO : store the base
     PoK[] public proofs;
-    //TODO BetaPoK public test;
     function OrPoK() public{
         G[0] = Gx;
         G[1] = Gy;
-        
-        //H[0] = Hx;
-        //H[1] = Hy;
+        H[0] = Hx;
+        H[1] = Hy;
     }
 
-    /*function publishECDLP(uint pokerKey) public {
-        uint[3] memory secretG = Secp256k1_noconflict._mul(pokerKey, G);
-        ECCMath_noconflict.toZ1(secretG,p);//Eason: transform Jacobi->affine
-        (liveHand[0],liveHand[1]) = (secretG[0],secretG[1]);
-    }*/
-
-    function setProblems(uint[] pokerKeys) public {
+    function easySetProblems(uint real, uint[] pokerKeys) public {
         problems.length = pokerKeys.length;
-        for(uint i=0; i<problems.length; i++){
-            uint[3] memory secretG = Secp256k1_noconflict._mul(pokerKeys[i], G);
-            ECCMath_noconflict.toZ1(secretG,p);
-            (problems[i][0],problems[i][1]) = (secretG[0],secretG[1]);
-        }   
+        for(uint i=0; i<real; i++){
+            uint[3] memory secretH = Secp256k1_noconflict._mul(pokerKeys[i], H);
+            ECCMath_noconflict.toZ1(secretH,p);
+            (problems[i][0],problems[i][1]) = (secretH[0],secretH[1]);
+        }
+        uint[3] memory secretG = Secp256k1_noconflict._mul(pokerKeys[i], G);
+        ECCMath_noconflict.toZ1(secretG,p);
+        (problems[i][0],problems[i][1]) = (secretG[0],secretG[1]);
+        for(i= real+1; i<problems.length; i++){
+            secretH = Secp256k1_noconflict._mul(pokerKeys[i], H);
+            ECCMath_noconflict.toZ1(secretH,p);
+            (problems[i][0],problems[i][1]) = (secretH[0],secretH[1]);
+        }      
     }
 
     function getProblems(uint i) public view returns(uint[2] point){
@@ -108,14 +96,14 @@ contract OrPoK {
 
     
     // m - 1 fake proof
-    function forgeProof(uint[2] werewolf, uint[2] liveHand, uint victim) public view returns(uint[2] H, uint[2] B,uint message, uint[3] T2, uint c2, uint s2){
-        (H[0],H[1]) = (werewolf[0],werewolf[1]);
+    function forgeProof(uint[2] werewolf, uint[2] liveHand, uint victim) public view returns(uint[2] _H, uint[2] B,uint message, uint[3] T2, uint c2, uint s2){
+        (_H[0],_H[1]) = (werewolf[0],werewolf[1]);
         (B[0],B[1])=(liveHand[0],liveHand[1]);
         message = victim;
 
         c2 = uint(keccak256(uint8(1),B, message)) % q;//choose a random # by self
         s2 = uint(keccak256(uint8(2),B, message)) % q;//choose a random # by self
-        uint[3] memory s2H = Secp256k1_noconflict._mul(s2, H);
+        uint[3] memory s2H = Secp256k1_noconflict._mul(s2, _H);
         uint[3] memory c2B = Secp256k1_noconflict._mul(c2, B);
         ECCMath_noconflict.toZ1(c2B,p);
         //T2 = Secp256k1_noconflict._mul(q-1,[c2B[0],c2B[1]]);
@@ -124,7 +112,7 @@ contract OrPoK {
         ECCMath_noconflict.toZ1(T2,p);
     }
 
-    function easyForgeProof(uint i,uint victim) public view returns(uint[2] H, uint[2] B,uint message, uint[3] T2, uint c2, uint s2){
+    function easyForgeProof(uint i,uint victim) public view returns(uint[2] h, uint[2] B,uint message, uint[3] T2, uint c2, uint s2){
         return forgeProof(G, problems[i], victim);
         //function forgeProof can't overloading. work around : rename 
     }

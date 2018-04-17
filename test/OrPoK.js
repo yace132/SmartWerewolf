@@ -6,38 +6,51 @@ myBigNumber.config({ MODULO_MODE: myBigNumber.EUCLID })
 contract('OrPoK', async(accounts) => {
     const admin = accounts[0]
     var testPoK, abi, message, real, q
-    var secrets = [10,5531555551234,3, 44333,3443]
+    var secrets = [0xa,0xa55bf4,0xbb3, 0x80c03,0x3443]
     var pfs = []
     function print(pf){
-        
+        let T = pf.T
         let c = pf.c
-        console.log("c= "+c.toString(16))
+        let s = pf.s
+        console.log("\t\tT:")
+        console.log("\t\t\t"+T[0].toString(16)+",")
+        console.log("\t\t\t"+T[1].toString(16)+",")
+        console.log("\t\t\t"+T[2].toString(16))
+        console.log("\t\tc: "+c.toString(16))
+        console.log("\t\ts: "+s.toString(16))
     }
+    
     before( async ()=> {     
 
         testPoK = await PoKContract.new({from: admin})
         q = await testPoK.q()
-        console.log("q= "+q.toString(16))
 
     })
     
-    it("at begining generate discrete log problem",async function(){
-            let m='hello world'
-            
+    it("can publish everyone's hand",async function(){
+            let m='kill player 3'
             message = web3.fromAscii(m)
-            real =0
-            console.log('\tmessage: ',m)
-            console.log('\tsecret: ',secrets)
+            real =2
+
             
-            await testPoK.setProblems(secrets,{from: admin})
-            
+            console.log("\tAssume 5 players left in the game")
+            await testPoK.easySetProblems(real,secrets,{from: admin})
+
+            //console.log('\tmessage: ',m)
+            console.log("\t           role (secret)\tpokerKey (secret)\t\thand (public)")
             for(let i = 0; i< secrets.length; i++){
                 let problem = await testPoK.getProblems(i)
-                console.log("Q_"+i+"\n "+[problem[0].toString(16),problem[1].toString(16)])
+                if(i!=real){
+                    console.log("\tplayer "+i+" : villager\t\t"+secrets[i].toString(16)+"\t\t"
+                    +[problem[0].toString(16),problem[1].toString(16)[0]+problem[0].toString(16)[1]+problem[0].toString(16)[2]+" ..."])
+                }else{
+                    console.log("\tplayer "+i+" : werewolf\t\t"+secrets[i].toString(16)+"\t\t"
+                    +[problem[0].toString(16),problem[1].toString(16)[0]+problem[0].toString(16)[1]+problem[0].toString(16)[2]+" ..."])
+                }
             }   
         })
     
-    it("create proof",async function(){
+    it("can kill at night",async function(){
         
         function writeTo(proof, pf){
             pf.g = proof[0]
@@ -48,7 +61,7 @@ contract('OrPoK', async(accounts) => {
             pf.s = proof[5]
         }
 
-        console.log("Genarating proof...")
+        console.log("\tWerewolf genarates proof ...")
         let pokerKey = secrets[real]
         let victim = message
 
@@ -63,12 +76,12 @@ contract('OrPoK', async(accounts) => {
             pfs[i] = {g:[],A:[],message:0,T:[],c:0,s:0}
             let proof = await testPoK.easyForgeProof(i,victim)
             writeTo(proof, pfs[i])
-            console.log("proof "+i)
+            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werwolf !")
 
             Ts[i] = pfs[i].T
             print(pfs[i])
             totalFakeC = totalFakeC.plus(pfs[i].c).modulo(q);
-            console.log("totalFakeC = ", totalFakeC.toString(16)) 
+            //debug console.log("totalFakeC = ", totalFakeC.toString(16)) 
 
         }
                         
@@ -77,13 +90,13 @@ contract('OrPoK', async(accounts) => {
             pfs[i] = {g:[],A:[],message:0,T:[],c:0,s:0}
             let proof = await testPoK.easyForgeProof(i,victim)       
             writeTo(proof, pfs[i])
-            console.log("proof "+i)
-
+            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werwolf !")
+            
             Ts[i] = pfs[i].T
             
             print(pfs[i])
             totalFakeC = totalFakeC.plus(pfs[i].c).modulo(q);
-            console.log("totalFakeC = ", totalFakeC.toString(16)) 
+            //debug console.log("totalFakeC = ", totalFakeC.toString(16)) 
         }
         
         //1 real proof
@@ -91,17 +104,18 @@ contract('OrPoK', async(accounts) => {
         Ts[real] = await testPoK.computeTFrom(realt)
         let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim, real, Ts))
         //web3 use deafult bignumber.js, mod may < 0. Use self config instead
-        console.log("realChallenge =",realChallenge.toString(16))
+        //debug console.log("realChallenge =",realChallenge.toString(16))
         let realc = realChallenge.minus(totalFakeC).modulo(q)
-        console.log("realc = (realChallenge - totalFakeC) mod q =", realc.toString(16))
+        //debug console.log("realc = (realChallenge - totalFakeC) mod q =", realc.toString(16))
 
 
         pfs[real] = {g:[],A:[],message:0,T:[],c:0,s:0}
         let proof = await testPoK.easyCreateSchnorr(real, pokerKey, victim,  realt ,realc)       
         writeTo(proof, pfs[real])
-        console.log("proof "+real)
+        console.log("\n\tproof "+real+" = Prove I am player "+real+" and I am werwolf !")
         print(pfs[real])
-                 
+        let publishMessage = "0x"+pfs[real].message.toString(16)
+        console.log("\n\tmessage = "+web3.toAscii(publishMessage)) 
     })
 
     it("then verify proofs",async function(){
@@ -111,19 +125,20 @@ contract('OrPoK', async(accounts) => {
         let i = 0
         for(i=0; i<secrets.length; i++){    
             let proof = pfs[i]
-            console.log("proof "+i+":")
+            console.log("\tproof "+i+":")
             let result = await testPoK.verifySchnorr(proof.g,proof.A,proof.T,proof.c,proof.s)
-            console.log(result)
+            console.log("\t\t"+result)
             Ts[i] = pfs[i].T
-            print(pfs[i])
+            //debug print(pfs[i])
             cTotal = cTotal.plus(pfs[i].c).modulo(q);
-            console.log("cTotal= "+cTotal.toString(16)) 
+            //debug console.log("cTotal= "+cTotal.toString(16)) 
         }
-        console.log("so cTotal is"+cTotal.toString(16))
+        //debug console.log("so cTotal is"+cTotal.toString(16))
         let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim, real, Ts))
-        console.log("realChallenge ="+realChallenge.toString(16))
+        //debug console.log("realChallenge ="+realChallenge.toString(16))
         let realc = realChallenge.minus(pfs[1].c).modulo(q)
-        assert(cTotal.equals(realChallenge),"Message is wrong!")
+        console.log("\tVerify signature and message :",cTotal.equals(realChallenge))
+
     })
 
     /*it("create proofs",async function(){
@@ -132,6 +147,7 @@ contract('OrPoK', async(accounts) => {
             web3.eth.getBlock('latest')
     })*/
 
+    /* debug
     after(  ()=> {     
 
         console.log("get contract informations ... ")
@@ -139,7 +155,7 @@ contract('OrPoK', async(accounts) => {
         console.log("abi="+JSON.stringify(testPoK.abi))
 
     })
-
+    */
     
 
 })

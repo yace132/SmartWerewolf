@@ -1,5 +1,4 @@
-pragma solidity ^0.4.19;
-import "./CDSProtocol.sol";
+pragma solidity ^0.4.7;
 import "./OrPoK.sol";
 
 contract SmartWerewolf {
@@ -28,6 +27,12 @@ contract SmartWerewolf {
     function SmartWerewolf() public {
         G[0] = Gx;
         G[1] = Gy;
+    }
+
+    function getHandOf(address name) public returns(uint[2] hand){//, uint) {
+        uint i = playerNumOf[name];
+        emit ShowHand((players[i].hand)[0], (players[i].hand)[1], "getHandOf");
+        (hand[0] ,hand[1]) = ((players[i].hand)[0], (players[i].hand)[1]);
     }
 
     //1. 集合玩家
@@ -66,17 +71,6 @@ contract SmartWerewolf {
         return roleOf[keccak256(card)];
     }
 
-    function multiply(uint s, uint[2] point) internal returns(uint ,uint){
-        uint[3] memory result = Secp256k1_noconflict._mul(s, point);
-        ECCMath_noconflict.toZ1(result, p);
-        return (result[0],result[1]);
-    }
-
-    function generateMap(uint mpc, uint[2] card, RoleTypes role) internal {
-        (card[0], card[1]) = multiply(mpc, G);
-        roleOf[keccak256(card)] = uint(role);
-    }
-
     //2-1 印製牌
     //(a) 印牌面   
     function createCards() public {   
@@ -84,30 +78,35 @@ contract SmartWerewolf {
         for(uint i=0; i <= n; i++ ){
             prepareDeck(i);
         }
-        generateMap(MPC[0], deck[0], RoleTypes.Unseen);
-        generateMap(MPC[1], deck[1], RoleTypes.Werewolf);
-        generateMap(MPC[2], deck[2], RoleTypes.Werewolf);
-        generateMap(MPC[3], deck[3], RoleTypes.Seer);
+        for(i=0; i<=n; i++){
+            (deck[i][0], deck[i][1]) = multiply(MPC[i], G);
+        }
+        generateMap(deck[0], RoleTypes.Unseen);
+        generateMap(deck[1], RoleTypes.Werewolf);
+        generateMap(deck[2], RoleTypes.Werewolf);
+        generateMap(deck[3], RoleTypes.Seer);
         for (uint j = 4; j <= n; j++) {
-            generateMap(MPC[j], deck[j], RoleTypes.Villager);
+            generateMap(deck[j], RoleTypes.Villager);
         }
     }
     
     //TODO:(b)洗牌、印製牌背  
     function shuffleCards() public {
-        uint printBack = 0x777; 
+        uint printBack = 0x7717; 
         for(uint i=0; i<=n; i++){
             (deck[i][0], deck[i][1]) = multiply(printBack, deck[i]);
         }
-        uint[2] memory tmp = deck[2];
-        deck[2] = deck[5];
-        deck[5] = tmp;
+        uint[2] memory tmp;
+        (tmp[0], tmp[1]) = (deck[2][0], deck[2][1]);
+        (deck[2][0], deck[2][1]) = (deck[5][0], deck[5][1]);
+        (deck[5][0], deck[5][1]) = (tmp[0], tmp[1]);
     } 
 
     //TODO: 2-2. 發牌 
     function dealCards() public {
         for(uint i=1; i<=n; i++){
-            players[i].hand = deck[i];
+            (players[i].hand[0], players[i].hand[1])  
+            = (deck[i][0], deck[i][1]);
         }
         helpDecryptRole();
     }
@@ -139,6 +138,12 @@ contract SmartWerewolf {
         else if(living[uint(RoleTypes.Werewolf)]==0){
             winner = "Humans";
         }
+    }
+
+    function numSurvive() public view returns(uint){
+        
+        return livingPlayers.length-1;
+    
     }
 
     function prepareDeck(uint i) internal {
@@ -179,11 +184,18 @@ contract SmartWerewolf {
     
     }
     
-    function numSurvive() view returns(uint){
+    function multiply(uint s, uint[2] point) internal returns(uint ,uint){
+        uint[3] memory result = Secp256k1_noconflict._mul(s, point);
+        ECCMath_noconflict.toZ1(result, p);
+        return (result[0],result[1]);
+    }
+
+    function generateMap(uint[2] card, RoleTypes role) internal {
         
-        return livingPlayers.length-1;
+        roleOf[keccak256(card)] = uint(role);
     
     }
+
     
     enum RoleTypes{Unseen, Werewolf, Seer, Villager}
     
@@ -202,6 +214,6 @@ contract SmartWerewolf {
     }
     
     event PlayerReady(uint numPlayers);
-    event ShowHand(uint[2][] livingHand);
+    event ShowHand(uint handX, uint handY, string at);
     event debug(uint i);
 }
