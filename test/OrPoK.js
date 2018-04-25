@@ -28,7 +28,7 @@ contract('OrPoK', async(accounts) => {
     })
     
     it("can publish everyone's hand",async function(){
-            let m='kill player 3'
+            let m='kill player 0'
             message = web3.fromAscii(m)
             real =2
 
@@ -141,6 +141,63 @@ contract('OrPoK', async(accounts) => {
 
     })
 
+    //demo應該更具體一點，去掉抽象的數學，可能可以加偽造證明的情況
+    it("should reject person who pretend werewolf ",async function(){
+        
+        function writeTo(proof, pf){
+            pf.g = proof[0]
+            pf.A = proof[1]
+            pf.message = proof[2]
+            pf.T = proof[3]
+            pf.c = proof[4]
+            pf.s = proof[5]
+        }
+
+        console.log("\tVillager try to create proof ...")
+        //let pokerKey = secrets[real]
+        let victim = message
+
+        //let totalFakeC = new myBigNumber(0);
+        let Ts = []
+        // m-1 "fake" proof
+        let i=0;            
+        for( i=0; i<secrets.length; i++){
+            
+            pfs[i] = {g:[],A:[],message:0,T:[],c:0,s:0}
+            let proof = await testPoK.easyForgeProof(i,victim)       
+            writeTo(proof, pfs[i])
+            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werwolf !")
+            
+            Ts[i] = pfs[i].T
+            
+            print(pfs[i])
+            //totalFakeC = totalFakeC.plus(pfs[i].c).modulo(q);
+            //debug console.log("totalFakeC = ", totalFakeC.toString(16)) 
+        }
+        let publishMessage = "0x"+pfs[0].message.toString(16)
+        console.log("\n\tmessage = "+web3.toAscii(publishMessage)) 
+
+        let victim = pfs[0].message
+        let Ts = []
+        let cTotal = new myBigNumber(0);
+        let i = 0
+        for(i=0; i<secrets.length; i++){    
+            let proof = pfs[i]
+            console.log("\tproof "+i+":")
+            let result = await testPoK.verifySchnorr(proof.g,proof.A,proof.T,proof.c,proof.s)
+            console.log("\t\t"+result)
+            Ts[i] = pfs[i].T
+            //debug print(pfs[i])
+            cTotal = cTotal.plus(pfs[i].c).modulo(q);
+            //debug console.log("cTotal= "+cTotal.toString(16)) 
+        }
+        //debug console.log("so cTotal is"+cTotal.toString(16))
+        let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim, real, Ts))
+        //debug console.log("realChallenge ="+realChallenge.toString(16))
+        let realc = realChallenge.minus(pfs[1].c).modulo(q)
+        console.log("\tVerify signature and message :",cTotal.equals(realChallenge))
+    })
+
     /*it("create proofs",async function(){
         var PoK = await testPoK.createProofs(secrets[1], message, 1,{from: admin})
             //console.log(PoK[0])
@@ -157,5 +214,4 @@ contract('OrPoK', async(accounts) => {
     })
     */
     
-
 })

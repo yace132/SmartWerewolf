@@ -29,12 +29,6 @@ contract SmartWerewolf {
         G[1] = Gy;
     }
 
-    function getHandOf(address name) public returns(uint[2] hand){//, uint) {
-        uint i = playerNumOf[name];
-        emit ShowHand((players[i].hand)[0], (players[i].hand)[1], "getHandOf");
-        (hand[0] ,hand[1]) = ((players[i].hand)[0], (players[i].hand)[1]);
-    }
-
     //1. 集合玩家
     function engagement(address[] _players) public {
         require(_players.length >= 6);
@@ -67,10 +61,6 @@ contract SmartWerewolf {
         emit PlayerReady(n);
     }
     
-    function roleOf(uint[2] card) public view returns(uint){
-        return roleOf[keccak256(card)];
-    }
-
     //2-1 印製牌
     //(a) 印牌面   
     function createCards() public {   
@@ -140,11 +130,14 @@ contract SmartWerewolf {
         }
     }
 
-    function numSurvive() public view returns(uint){
-        
-        return livingPlayers.length-1;
-    
+    function roleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
+
+    function getHandOf(address name) public view returns(uint[2] hand){
+        uint i = playerNumOf[name];
+        (hand[0] ,hand[1]) = ((players[i].hand)[0], (players[i].hand)[1]);
     }
+
+    function numSurvive() public view returns(uint) {return livingPlayers.length-1;}
 
     function prepareDeck(uint i) internal {
         
@@ -160,11 +153,6 @@ contract SmartWerewolf {
         } 
     }
 
-    function verify(uint proofCanKill, Player victim) pure internal returns(bool){
-        
-        return proofCanKill == 123 && victim.live == true;
-    }
-
     function killed(address player) internal{
         uint i = playerNumOf[player];
         players[i].live=false;
@@ -178,12 +166,7 @@ contract SmartWerewolf {
         theLivingNumOf[player]=0;
     }
 
-    function verifyRole(RoleTypes _role, uint _pokerKey) pure internal returns(bool){
-        
-        return (_role!=RoleTypes.Unseen && _pokerKey==456);
-    
-    }
-    
+
     function multiply(uint s, uint[2] point) internal returns(uint ,uint){
         uint[3] memory result = Secp256k1_noconflict._mul(s, point);
         ECCMath_noconflict.toZ1(result, p);
@@ -196,6 +179,16 @@ contract SmartWerewolf {
     
     }
 
+    function verifyRole(RoleTypes _role, uint _pokerKey) pure internal returns(bool){
+        
+        return (_role!=RoleTypes.Unseen && _pokerKey==456);
+    
+    }
+    
+    function verify(uint proofCanKill, Player victim) pure internal returns(bool){
+        
+        return proofCanKill == 123 && victim.live == true;
+    }
     
     enum RoleTypes{Unseen, Werewolf, Seer, Villager}
     
@@ -214,6 +207,6 @@ contract SmartWerewolf {
     }
     
     event PlayerReady(uint numPlayers);
-    event ShowHand(uint handX, uint handY, string at);
+   
     event debug(uint i);
 }

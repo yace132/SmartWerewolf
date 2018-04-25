@@ -20,8 +20,8 @@ contract('SmartWerewolf', function(accounts) {
         let s = await w.numSurvive();// no built-in getter for array length @@
         for(var i=1; i<=s; i++){
             let name = await w.livingPlayers(i)
-            let hand = await w.getHandOf(name, {from:admin})
-            console.log(i,hand,hand[0],hand[1])
+            let hand = await w.getHandOf(name)
+            console.log(i,hand[0].toString(16),hand[1].toString(16))
             //let hand = p[2]
             //let hx = hand[0].toString(16)
             //let hy = hand[1].toString(16)                
@@ -59,6 +59,7 @@ contract('SmartWerewolf', function(accounts) {
         victimName = user3
         await werewolf.nightKill(victimName, proofCanKill, {from: admin})
         await werewolf.openRole(2, 456, {from: user3})
+        await GetSurviveHands(werewolf)
         var w = await werewolf.winner();//需要等getter function, enum 只能用數字確認
         assert.equal(w, 0, "Winner wasn't determined at that time.")
         
@@ -66,7 +67,7 @@ contract('SmartWerewolf', function(accounts) {
         await werewolf.dayVoting(user4)
         await werewolf.openRole(3, 456, {from: user4})
         w = await werewolf.winner()
-        assert.equal(w,"rrrWerewolves","Winner shold be Werewolves.")
+        assert.equal(w,"Werewolves","Winner shold be Werewolves.")
         console.log(w,"win");
         await GetSurviveHands(werewolf)
     })
@@ -162,12 +163,12 @@ contract('SmartWerewolf', function(accounts) {
         
     })*/
 
-    after(  ()=> {     
+    /*after(  ()=> {     
 
         console.log("get contract informations ... ")
         console.log("address=\""+werewolf.address+"\"")
         console.log("abi="+JSON.stringify(werewolf.abi))
 
-    })
+    })*/
     
 })
