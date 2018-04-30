@@ -130,8 +130,13 @@ contract OrPoK {
         ECCMath_noconflict.toZ1(realT,p);
     }
 */
+    function computeRealt(uint[2] _G, uint[2][] _problems, uint pokerKey,  uint victim)public view returns(uint realt){
+        realt = uint(keccak256(_G, _problems, victim));
+        realt = uint(keccak256(realt, pokerKey)) % q;
+    }
     //1 real proof
     function easyComputeRealt(uint pokerKey,  uint victim, uint real) public view returns(uint realt){
+        return computeRealt(G, problems, pokerKey,  victim);
         //i) choose t
         realt = uint(keccak256(G, problems, victim));//need other T??
         realt = uint(keccak256(realt, pokerKey)) % q;//avoid stack too deep
@@ -140,16 +145,25 @@ contract OrPoK {
     }
 
     //1 real proof
-    function computeTFrom(uint realt) public view returns(uint[3] realT){
+    function computeTFrom(uint realt, uint[2] _G) public view returns(uint[3] realT){
         //ii) compute T
-        realT = Secp256k1_noconflict._mul(realt, G);
+        realT = Secp256k1_noconflict._mul(realt, _G);
         ECCMath_noconflict.toZ1(realT,p);
     }
 
-    function easyComputeChallenge(uint victim, uint real, uint[3][] Ts) public view returns(uint realChallenge){
+    function easyComputeTFrom(uint realt) public view returns(uint[3] realT){
+        //ii) compute T
+        return computeTFrom(realt, G);
+    }
+
+    function computeChallenge(uint[2] _G, uint[2][] _problems, uint victim, uint real, uint[3][] Ts) public view returns(uint realChallenge){
         //iii) compute c
-        realChallenge = uint(keccak256(G, problems, victim,Ts)) % q;
+        realChallenge = uint(keccak256(_G, _problems, victim,Ts)) % q;
         //realChallenge = addmod(realChallenge, q-totalFakeC, q);//submod, avoid rounding when negative
+    }
+
+    function easyComputeChallenge(uint victim, uint real, uint[3][] Ts) public view returns(uint realChallenge){
+        return computeChallenge(G, problems, victim, real, Ts);
     }
 
     
@@ -217,13 +231,15 @@ contract OrPoK {
         publishProofs(pokerKey, G, problems, victim, real);
     }
 
-    function createProofs(uint pokerKey,  uint victim, uint real) public returns(PoK[] pfs){
+    function createProofs(uint pokerKey,  uint victim, uint real) public view returns(PoK[] pfs){//although we can use experimental abi in solidty. web3 may have not support it 
         //input: conditions 
         //output: store conditions & PoK
         //uint[2] memory werewolf= [G[0],G[1]];
-        require(real<problems.length);
+        
+        //require(real<problems.length);
         
         uint totalFakeC = 0;
+        
         uint[3][ ] memory T = new uint[3][](problems.length);
 
         // m-1 "fake" proof
@@ -232,7 +248,6 @@ contract OrPoK {
         PoK memory pf = pfs[0];
 
         for( i=0; i<real; i++){
-            emit Process(i); 
             pf = pfs[i];
             (pf.g, pf.A, pf.message,) = forgeProof(G,problems[i],victim);
             (, pf.T, pf.c, pf.s) = forgeProof(G,problems[i],victim);
@@ -245,7 +260,6 @@ contract OrPoK {
         }
 
         for( i=real+1; i<problems.length; i++){
-            emit Process(i);
             pf = pfs[i]; 
             (pf.g, pf.A, pf.message,) = forgeProof(G,problems[i],victim);
             (, pf.T, pf.c, pf.s) = forgeProof(G,problems[i],victim);
@@ -253,7 +267,6 @@ contract OrPoK {
             totalFakeC = addmod(totalFakeC, pf.c, q);
             T[i] = pf.T;
         }
-        emit Process(real);
         //1 real proof
         pf = pfs[ real ];
         

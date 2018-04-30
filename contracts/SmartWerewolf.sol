@@ -2,8 +2,14 @@ pragma solidity ^0.4.7;
 import "./OrPoK.sol";
 
 contract SmartWerewolf {
-    
-    //bullet broad
+    //parameters using bitcoin's curve (fixed for every game)
+    uint constant p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;
+    uint constant Gx =0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
+    uint constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
+    uint public constant q = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
+    OrPoK processPoK; 
+
+    //bullet broad (fixed during 1 game)
     Player[] public players;
     uint[] MPC;
     uint[2][] public deck;
@@ -12,19 +18,14 @@ contract SmartWerewolf {
     mapping (address => uint) public playerNumOf;
     mapping(bytes32 => uint) public roleOf;
     
-    //parameters using bitcoin's curve
-    uint constant p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;
-    uint constant Gx =0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
-    uint constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
-    uint public constant q = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
-   
-    //up-to-date report
+    //up-to-date report (change in game)
     mapping(uint => uint) public living;
     address[] public livingPlayers;
     mapping(address => uint) public theLivingNumOf;
     string public winner;
     
-    function SmartWerewolf() public {
+    function SmartWerewolf(address addressPoK) public {
+        processPoK = OrPoK(addressPoK);
         G[0] = Gx;
         G[1] = Gy;
     }
@@ -131,7 +132,7 @@ contract SmartWerewolf {
     }
 
     function roleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
-
+    function cardOrder() public view returns(uint) {return q;}
     function getHandOf(address name) public view returns(uint[2] hand){
         uint i = playerNumOf[name];
         (hand[0] ,hand[1]) = ((players[i].hand)[0], (players[i].hand)[1]);
@@ -139,6 +140,30 @@ contract SmartWerewolf {
 
     function numSurvive() public view returns(uint) {return livingPlayers.length-1;}
 
+    function werewolfFrameKilling(uint[2] framedHand, uint[2] werewolfCard,  uint victim) public view returns(uint[2] _werewolfCard, uint[2] _framedHand, uint _victim, uint[3] T, uint c, uint s){
+        return processPoK.forgeProof(werewolfCard, framedHand, victim);
+    }
+
+    function werewolfCard() external view returns(uint cardX,uint cardY){
+        (cardX, cardY) = (deck[1][0], deck[1][1]);
+    }
+    
+    function werewolfChooset(uint pokerKey, uint[2][] hands, uint[2] _werewolfCard, uint victim  ) external view returns(uint realt){
+
+        return processPoK.computeRealt(_werewolfCard, hands, pokerKey, victim);
+    }
+
+    function werewolfComputeT(uint realt, uint[2] _werewolfCard) public view returns(uint[3] realT){
+        return processPoK.computeTFrom(realt, _werewolfCard);
+    }
+
+    function computeChallenge(uint[2] _werewolfCard, uint[2][] _hands, uint victim, uint real, uint[3][] Ts) public view returns(uint realChallenge){
+        return processPoK.computeChallenge(_werewolfCard, _hands, victim, real, Ts);
+    }
+
+    function werewolfProve(uint pokerKey, uint[2] werewolfCard, uint[2] hand, uint victim, uint tReady,uint cReady) public view returns(uint[2] _werewolfCard, uint[2] _hand, uint _victim, uint[3] T, uint c, uint s){
+        return processPoK.createSchnorr(pokerKey, werewolfCard, hand, victim, tReady, cReady);
+    }
     function prepareDeck(uint i) internal {
         
         MPC[ i ] = (i+123) % q;

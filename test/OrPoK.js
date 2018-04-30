@@ -49,6 +49,14 @@ contract('OrPoK', async(accounts) => {
                 }
             }   
         })
+
+    /*it("create proofs",async function(){
+        var PoK = await testPoK.createProofs(secrets[1], message, 1)
+        //console.log(PoK[0])
+        //web3.eth.getBlock('latest')
+    })//view tx is limited by gas 
+    //https://ethereum.stackexchange.com/questions/33562/truffle-constant-functions-run-out-of-gas-how-to-simulate-a-local-node?rq=1 
+    */
     
     it("can kill at night",async function(){
         
@@ -101,7 +109,7 @@ contract('OrPoK', async(accounts) => {
         
         //1 real proof
         let realt = await testPoK.easyComputeRealt(pokerKey, victim, real)
-        Ts[real] = await testPoK.computeTFrom(realt)
+        Ts[real] = await testPoK.easyComputeTFrom(realt)
         let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim, real, Ts))
         //web3 use deafult bignumber.js, mod may < 0. Use self config instead
         //debug console.log("realChallenge =",realChallenge.toString(16))
@@ -142,7 +150,7 @@ contract('OrPoK', async(accounts) => {
     })
 
     //demo應該更具體一點，去掉抽象的數學，可能可以加偽造證明的情況
-    it("should reject person who pretend werewolf ",async function(){
+    /*it("should reject person who pretend werewolf ",async function(){
         
         function writeTo(proof, pf){
             pf.g = proof[0]
@@ -196,13 +204,9 @@ contract('OrPoK', async(accounts) => {
         //debug console.log("realChallenge ="+realChallenge.toString(16))
         let realc = realChallenge.minus(pfs[1].c).modulo(q)
         console.log("\tVerify signature and message :",cTotal.equals(realChallenge))
-    })
-
-    /*it("create proofs",async function(){
-        var PoK = await testPoK.createProofs(secrets[1], message, 1,{from: admin})
-            //console.log(PoK[0])
-            web3.eth.getBlock('latest')
     })*/
+
+    
 
     /* debug
     after(  ()=> {     
