@@ -59,7 +59,6 @@ contract SmartWerewolf {
             livingPlayers[i]=players[i].name;
             theLivingNumOf[players[i].name]=i;
         }
-        emit PlayerReady(n);
     }
     
     //2-1 印製牌
@@ -80,7 +79,19 @@ contract SmartWerewolf {
             generateMap(deck[j], RoleTypes.Villager);
         }
     }
-    
+    function shuffleCardBy(uint i, uint pokerKey) external{
+        //encrypt each card
+        uint printBack = pokerKey; 
+        for(uint k=0; k<=n; k++){
+            (deck[k][0], deck[k][1]) = multiply(printBack, deck[k]);
+        }
+        //any shuffle
+        /*uint[2] memory tmp;
+        uint j = ((i+3)-1) % n + 1;
+        (tmp[0], tmp[1]) = (deck[j][0], deck[j][1]);
+        (deck[j][0], deck[j][1]) = (deck[i][0], deck[i][1]);
+        (deck[i][0], deck[i][1]) = (tmp[0], tmp[1]);*/
+    }
     //TODO:(b)洗牌、印製牌背  
     function shuffleCards() public {
         uint printBack = 0x7717; 
@@ -100,6 +111,10 @@ contract SmartWerewolf {
             = (deck[i][0], deck[i][1]);
         }
         helpDecryptRole();
+    }
+
+    function dealCardTo(uint i) external view returns(uint[2] hand){
+        (hand[0],hand[1])=(deck[i][0], deck[i][1]);
     }
 
     function nightKill(address victimName, uint proofCanKill) public {
@@ -132,7 +147,7 @@ contract SmartWerewolf {
     }
 
     function roleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
-    function cardOrder() public view returns(uint) {return q;}
+    function cardOrder() public pure returns(uint) {return q;}
     function getHandOf(address name) public view returns(uint[2] hand){
         uint i = playerNumOf[name];
         (hand[0] ,hand[1]) = ((players[i].hand)[0], (players[i].hand)[1]);
@@ -140,15 +155,15 @@ contract SmartWerewolf {
 
     function numSurvive() public view returns(uint) {return livingPlayers.length-1;}
 
-    function werewolfFrameKilling(uint[2] framedHand, uint[2] werewolfCard,  uint victim) public view returns(uint[2] _werewolfCard, uint[2] _framedHand, uint _victim, uint[3] T, uint c, uint s){
-        return processPoK.forgeProof(werewolfCard, framedHand, victim);
+    function werewolfFrameKilling(uint[2] framedHand, uint[2] _werewolfCard,  uint victim) public view returns(uint[2] __werewolfCard, uint[2] _framedHand, uint _victim, uint[3] T, uint c, uint s){
+        return processPoK.forgeProof(_werewolfCard, framedHand, victim);
     }
 
     function werewolfCard() external view returns(uint cardX,uint cardY){
         (cardX, cardY) = (deck[1][0], deck[1][1]);
     }
     
-    function werewolfChooset(uint pokerKey, uint[2][] hands, uint[2] _werewolfCard, uint victim  ) external view returns(uint realt){
+    function werewolfChooset(uint pokerKey, uint[2][] hands, uint[2] _werewolfCard, uint victim ) external view returns(uint realt){
 
         return processPoK.computeRealt(_werewolfCard, hands, pokerKey, victim);
     }
@@ -157,13 +172,18 @@ contract SmartWerewolf {
         return processPoK.computeTFrom(realt, _werewolfCard);
     }
 
-    function computeChallenge(uint[2] _werewolfCard, uint[2][] _hands, uint victim, uint real, uint[3][] Ts) public view returns(uint realChallenge){
-        return processPoK.computeChallenge(_werewolfCard, _hands, victim, real, Ts);
+    function computeChallenge(uint[2] _werewolfCard, uint[2][] _hands, uint victim, uint[3][] Ts) public view returns(uint realChallenge){
+        return processPoK.computeChallenge(_werewolfCard, _hands, victim, Ts);
     }
 
-    function werewolfProve(uint pokerKey, uint[2] werewolfCard, uint[2] hand, uint victim, uint tReady,uint cReady) public view returns(uint[2] _werewolfCard, uint[2] _hand, uint _victim, uint[3] T, uint c, uint s){
-        return processPoK.createSchnorr(pokerKey, werewolfCard, hand, victim, tReady, cReady);
+    function werewolfProve(uint pokerKey, uint[2] _werewolfCard, uint[2] hand, uint victim, uint tReady,uint cReady) public view returns(uint[2] __werewolfCard, uint[2] _hand, uint _victim, uint[3] T, uint c, uint s){
+        return processPoK.createSchnorr(pokerKey, _werewolfCard, hand, victim, tReady, cReady);
     }
+
+    function verifyWerewolfProof(uint[2] _werewolfCard, uint[2] hand,  uint[3] T, uint c, uint s) public view returns (bool result){
+        return processPoK.verifySchnorr(_werewolfCard, hand, T, c, s);
+    }
+
     function prepareDeck(uint i) internal {
         
         MPC[ i ] = (i+123) % q;
@@ -176,6 +196,16 @@ contract SmartWerewolf {
         	uint[2] storage hand = players[i].hand;
         	hand[0] ++;
         } 
+    }
+
+    function helpDecryptRole(uint me, uint pokerKey, uint i, uint[2] cipherCard) external view returns (uint[2] decryptCard){
+        if(me == i){
+            (decryptCard[0], decryptCard[1]) = (cipherCard[0], cipherCard[1]);
+        }else{
+            uint keyInverse = ECCMath_noconflict.invmod(pokerKey, q);
+            (decryptCard[0],decryptCard[1]) = multiply(keyInverse, cipherCard);
+        }
+       
     }
 
     function killed(address player) internal{
@@ -192,7 +222,7 @@ contract SmartWerewolf {
     }
 
 
-    function multiply(uint s, uint[2] point) internal returns(uint ,uint){
+    function multiply(uint s, uint[2] point) public view returns(uint ,uint){
         uint[3] memory result = Secp256k1_noconflict._mul(s, point);
         ECCMath_noconflict.toZ1(result, p);
         return (result[0],result[1]);

@@ -71,20 +71,20 @@ contract OrPoK {
         
         uint[3] memory secretG = Secp256k1_noconflict._mul(secret, g);
         ECCMath_noconflict.toZ1(secretG,p);
-        require(secretG[0] == A[0] && secretG[1] == A[1]);
+        require(secretG[0] == A[0] && secretG[1] == A[1]);//require can be used off-chain 
         
         uint t;
         if(tReady != 0 && cReady != 0){
             t = tReady;
-            T = Secp256k1_noconflict._mul(t, G);
+            T = Secp256k1_noconflict._mul(t, g);
             ECCMath_noconflict.toZ1(T,p);
             c = cReady;
         }else{
-            t = uint(keccak256(G,A,message)) % q;//add index of proof?
+            t = uint(keccak256(g,A,message)) % q;//add index of proof?
             //TODO: add some randomness
-            T = Secp256k1_noconflict._mul(t, G);
+            T = Secp256k1_noconflict._mul(t, g);
             ECCMath_noconflict.toZ1(T,p);
-            c=uint(keccak256(G,A, message,T)) % q;
+            c=uint(keccak256(g,A, message,T)) % q;
         }
         s = addmod(mulmod(secret,c,q),t,q);
     }
@@ -116,21 +116,8 @@ contract OrPoK {
         return forgeProof(G, problems[i], victim);
         //function forgeProof can't overloading. work around : rename 
     }
-/*
-    //can be ommited?
-    //1 real proof
-    function easyComputeT(uint pokerKey,  uint victim, uint real) public view returns(uint[3] realT){
-        //i) choose t
-        uint realt = uint(keccak256(G, problems, victim));//need other T??
-        realt = uint(keccak256(realt, pokerKey)) % q;//avoid stack too deep
-        //add index of proof? pokerKey instead
-        //add pokerKey for randomnes
-        //ii) compute T
-        realT = Secp256k1_noconflict._mul(realt, G);
-        ECCMath_noconflict.toZ1(realT,p);
-    }
-*/
-    function computeRealt(uint[2] _G, uint[2][] _problems, uint pokerKey,  uint victim)public view returns(uint realt){
+
+    function computeRealt(uint[2] _G, uint[2][] _problems, uint pokerKey,  uint victim) public view returns(uint realt){
         realt = uint(keccak256(_G, _problems, victim));
         realt = uint(keccak256(realt, pokerKey)) % q;
     }
@@ -156,14 +143,14 @@ contract OrPoK {
         return computeTFrom(realt, G);
     }
 
-    function computeChallenge(uint[2] _G, uint[2][] _problems, uint victim, uint real, uint[3][] Ts) public view returns(uint realChallenge){
+    function computeChallenge(uint[2] _G, uint[2][] _problems, uint victim,  uint[3][] Ts) public view returns(uint realChallenge){
         //iii) compute c
         realChallenge = uint(keccak256(_G, _problems, victim,Ts)) % q;
-        //realChallenge = addmod(realChallenge, q-totalFakeC, q);//submod, avoid rounding when negative
+
     }
 
-    function easyComputeChallenge(uint victim, uint real, uint[3][] Ts) public view returns(uint realChallenge){
-        return computeChallenge(G, problems, victim, real, Ts);
+    function easyComputeChallenge(uint victim,  uint[3][] Ts) public view returns(uint realChallenge){
+        return computeChallenge(G, problems, victim,  Ts);
     }
 
     
@@ -391,29 +378,5 @@ contract OrPoK {
     
     event Fail(uint pf);
     event Process(uint pf);
-    //event parameter needs a name @@
-    //https://github.com/trufflesuite/truffle/issues/494
-
-    /* TODO
-    struct BetaPoK{
-        Problem problem; 
-        //uint[2] g; 
-        //uint[2] A; 
-        uint message; 
-        Signature signature;
-        //uint[3] T; 
-        //uint c; 
-        //uint s;
-    }
-
-    struct Problem{
-        uint[2] g; 
-        uint[2] A;
-    }
-
-    struct Signature{
-        uint[3] T; 
-        uint c; 
-        uint s;
-    }*/
+    event Check(uint a,uint b);
 }

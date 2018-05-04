@@ -27,7 +27,7 @@ library Secp256k1_noconflict {
     // uint constant beta = "0x7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee";
 
     /// @dev See Curve.onCurve
-    function onCurve(uint[2] P) internal constant returns (bool) {
+    function onCurve(uint[2] P) internal pure returns (bool) {
         uint p = pp;
         if (0 == P[0] || P[0] == p || 0 == P[1] || P[1] == p)
             return false;
@@ -37,13 +37,13 @@ library Secp256k1_noconflict {
     }
 
     /// @dev See Curve.isPubKey
-    function isPubKey(uint[2] memory P) internal constant returns (bool isPK) {
+    function isPubKey(uint[2] memory P) internal pure returns (bool isPK) {
         isPK = onCurve(P);
     }
 
     /// @dev See Curve.isPubKey
     // TODO: We assume we are given affine co-ordinates for now
-    function isPubKey(uint[3] memory P) internal constant returns (bool isPK) {
+    function isPubKey(uint[3] memory P) internal pure returns (bool isPK) {
         uint[2] memory a_P;
         a_P[0] = P[0];
         a_P[1] = P[1];
@@ -73,7 +73,7 @@ library Secp256k1_noconflict {
     }*/
 
     /// @dev See Curve.compress
-    function compress(uint[2] P) internal constant returns (uint8 yBit, uint x) {
+    function compress(uint[2] P) internal pure returns (uint8 yBit, uint x) {
         x = P[0];
         yBit = P[1] & 1 == 1 ? 1 : 0;
     }
@@ -216,7 +216,7 @@ library Secp256k1_noconflict {
     // Point doubling, 2*P
     // Params: Px, Py, Pz
     // Not concerned about the 1 extra mulmod.
-    function _double(uint[3] memory P) internal constant returns (uint[3] memory Q) {
+    function _double(uint[3] memory P) internal pure returns (uint[3] memory Q) {
         uint p = pp;
         if (P[2] == 0)
             return;
@@ -232,7 +232,7 @@ library Secp256k1_noconflict {
     }
 
     // Same as double but mutates P and is internal only.
-    function _doubleM(uint[3] memory P) internal constant {
+    function _doubleM(uint[3] memory P) internal pure {
         uint p = pp;
         if (P[2] == 0)
             return;

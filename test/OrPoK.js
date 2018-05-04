@@ -69,7 +69,7 @@ contract('OrPoK', async(accounts) => {
             pf.s = proof[5]
         }
 
-        console.log("\tWerewolf genarates proof ...")
+        console.log("\n\t( Werewolf genarates proof ... )")
         let pokerKey = secrets[real]
         let victim = message
 
@@ -80,69 +80,71 @@ contract('OrPoK', async(accounts) => {
         // m-1 "fake" proof
         let i=0;            
         for(i=0; i<real; i++){
-            
+            console.log("\t\t( Werewolf forge proof of player",i,"... )")
             pfs[i] = {g:[],A:[],message:0,T:[],c:0,s:0}
             let proof = await testPoK.easyForgeProof(i,victim)
             writeTo(proof, pfs[i])
-            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werwolf !")
-
+            
             Ts[i] = pfs[i].T
-            print(pfs[i])
             totalFakeC = totalFakeC.plus(pfs[i].c).modulo(q);
-            //debug console.log("totalFakeC = ", totalFakeC.toString(16)) 
-
+            
         }
                         
         for( i=real+1; i<secrets.length; i++){
-            
+            console.log("\t\t( Werewolf forge proof of player",i,"... )")
             pfs[i] = {g:[],A:[],message:0,T:[],c:0,s:0}
             let proof = await testPoK.easyForgeProof(i,victim)       
             writeTo(proof, pfs[i])
-            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werwolf !")
             
             Ts[i] = pfs[i].T
             
-            print(pfs[i])
             totalFakeC = totalFakeC.plus(pfs[i].c).modulo(q);
-            //debug console.log("totalFakeC = ", totalFakeC.toString(16)) 
         }
         
         //1 real proof
+        console.log("\t\t( Werewolf creates proof of him(player",real+") ... )")
         let realt = await testPoK.easyComputeRealt(pokerKey, victim, real)
         Ts[real] = await testPoK.easyComputeTFrom(realt)
-        let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim, real, Ts))
+        let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim,  Ts))
         //web3 use deafult bignumber.js, mod may < 0. Use self config instead
         //debug console.log("realChallenge =",realChallenge.toString(16))
         let realc = realChallenge.minus(totalFakeC).modulo(q)
-        //debug console.log("realc = (realChallenge - totalFakeC) mod q =", realc.toString(16))
-
+        
 
         pfs[real] = {g:[],A:[],message:0,T:[],c:0,s:0}
         let proof = await testPoK.easyCreateSchnorr(real, pokerKey, victim,  realt ,realc)       
         writeTo(proof, pfs[real])
-        console.log("\n\tproof "+real+" = Prove I am player "+real+" and I am werwolf !")
-        print(pfs[real])
+        
+        console.log("\n\t( Werewolf broadcast proof ... )")
+        for( i=0; i<secrets.length; i++){
+            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werewolf !")
+            print(pfs[i])
+        }
+        console.log("proof = proof 0 + proof 1 + proof 2 + proof 3 + proof 4 = Prove I am werewolf, I am one of player 0, player 1, playr 2, player 3, or player 4")
+        
         let publishMessage = "0x"+pfs[real].message.toString(16)
         console.log("\n\tmessage = "+web3.toAscii(publishMessage)) 
     })
 
     it("then verify proofs",async function(){
+        //console.log("I want to prove I am werewolf, and I am one of the alive players ----- hash -----> challenge",realChallenge.toString(16))
         let victim = pfs[0].message
         let Ts = []
         let cTotal = new myBigNumber(0);
         let i = 0
         for(i=0; i<secrets.length; i++){    
             let proof = pfs[i]
-            console.log("\tproof "+i+":")
+            console.log("\tverify proof "+i+":")
             let result = await testPoK.verifySchnorr(proof.g,proof.A,proof.T,proof.c,proof.s)
             console.log("\t\t"+result)
+            if(result == true) console.log("\t\the is player "+i+" and he is werewolf ")
+            else console.log("\t\the is not werewolf "+i+" Or he is werewolf, but player "+i+" is not werewolf")
             Ts[i] = pfs[i].T
-            //debug print(pfs[i])
+            print(pfs[i])
             cTotal = cTotal.plus(pfs[i].c).modulo(q);
-            //debug console.log("cTotal= "+cTotal.toString(16)) 
         }
         //debug console.log("so cTotal is"+cTotal.toString(16))
-        let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim, real, Ts))
+        let realChallenge = new myBigNumber(await testPoK.easyComputeChallenge(victim,  Ts))
         //debug console.log("realChallenge ="+realChallenge.toString(16))
         let realc = realChallenge.minus(pfs[1].c).modulo(q)
         console.log("\tVerify signature and message :",cTotal.equals(realChallenge))
@@ -174,7 +176,7 @@ contract('OrPoK', async(accounts) => {
             pfs[i] = {g:[],A:[],message:0,T:[],c:0,s:0}
             let proof = await testPoK.easyForgeProof(i,victim)       
             writeTo(proof, pfs[i])
-            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werwolf !")
+            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werewolf !")
             
             Ts[i] = pfs[i].T
             
