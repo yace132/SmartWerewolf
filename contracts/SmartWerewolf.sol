@@ -1,4 +1,5 @@
 pragma solidity ^0.4.7;
+pragma experimental ABIEncoderV2;
 import "./OrPoK.sol";
 
 contract SmartWerewolf {
@@ -15,11 +16,13 @@ contract SmartWerewolf {
     uint[2][] public deck;
     uint public n;
     uint[2] G;
+    mapping (address => uint) public deposits;
     mapping (address => uint) public playerNumOf;
     mapping(bytes32 => uint) public roleOf;
     
     //up-to-date report (change in game)
-    mapping(uint => uint) public living;
+    //mapping(uint => uint) public living;
+    uint[4] public living;
     address[] public livingPlayers;
     mapping(address => uint) public theLivingNumOf;
     string public winner;
@@ -61,6 +64,55 @@ contract SmartWerewolf {
         }
     }
     
+     function depositGame(address player) external payable {
+        deposits[ player ] = msg.value;
+    }
+
+    function offChainEngage(address[] inPlayers) 
+        public 
+        returns(
+            uint nOut,
+            Player[] outPlayers,
+            uint[4] outLiving,
+            address[] outLivingPlayers
+        )
+    {
+        require(inPlayers.length >= 6);
+        uint i;
+        for(i = 0; i<inPlayers.length; i++){
+            address p = inPlayers[i];
+            require(deposits[p]>=100);
+        }
+
+        nOut = inPlayers.length;
+        players.length = 1+nOut;
+        outPlayers = new Player[](1+nOut);
+        for (i = 1; i <= nOut; i++) {
+            players[i] = Player
+            (
+                {
+                    name: inPlayers[ i-1 ],  
+                    live: true, 
+                    hand: [uint(0),0], 
+                    role: RoleTypes.Unseen,
+                    pokerKey: 0
+                }
+            );
+            outPlayers[i] = Player(players[i].name, players[i].live, [uint((players[i].hand)[0]),(players[i].hand)[1]], players[i].role, players[i].pokerKey);
+        //playerNumOf[players[i].name] = i;//how to output map?
+        }
+        
+        outLiving[uint(RoleTypes.Werewolf)]=2;
+        outLiving[uint(RoleTypes.Seer)]=1;
+        outLiving[uint(RoleTypes.Villager)]=nOut-3;
+
+        outLivingPlayers = new address[](nOut+1);
+        for(i=1;i<=nOut;i++){
+            outLivingPlayers[i]=players[i].name;
+            //theLivingNumOf[players[i].name]=i;//how to output map?
+        }
+    }
+
     //2-1 印製牌
     //(a) 印牌面   
     function createCards() public {   
