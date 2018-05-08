@@ -101,55 +101,23 @@ contract('SmartWerewolf', function(accounts) {
             }
             out.end()
         }
-
+    function regTheLiving()
+    
     before( async ()=> {     
         pok = await PoK.new({from: admin})
         werewolf = await Werewolf.new(pok.address, {from: admin})
         order = await werewolf.cardOrder()//(read from chain only 1 time)
     })
-    
-    /*it("pass Werewolves' victory", async function() {
-        
-        //day 0 (Prepare the game)
-        await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
-        await werewolf.createCards({from: admin})
-        await werewolf.shuffleCards({from: admin})
-        await werewolf.dealCards({from: admin})
-        await GetSurviveHands(werewolf)
-        console.log("It's Night 1 ---")
-        
-        var proofCanKill = generateZKProof()
-        var victimName = user1 // should be satisfied to the proofCanKill proof
-        await werewolf.nightKill(victimName, proofCanKill, {from: admin})
-        await werewolf.openRole(3, 456, {from: user1})
-        await GetSurviveHands(werewolf)
-        console.log("\nIt's Day 1   ---")
-        await werewolf.dayVoting(user2)
-        await werewolf.openRole(1, 456, {from: user2})
-        await GetSurviveHands(werewolf)
-        console.log("\nIt's Night 2 ---")
-        proofCanKill = generateZKProof()
-        victimName = user3
-        await werewolf.nightKill(victimName, proofCanKill, {from: admin})
-        await werewolf.openRole(2, 456, {from: user3})
-        await GetSurviveHands(werewolf)
-        var w = await werewolf.winner();//需要等getter function, enum 只能用數字確認
-        assert.equal(w, 0, "Winner wasn't determined at that time.")
-        
-        console.log("\nIt's Day 2   ---")
-        await werewolf.dayVoting(user4)
-        await werewolf.openRole(3, 456, {from: user4})
-        w = await werewolf.winner()
-        assert.equal(w,"Werewolves","Winner shold be Werewolves.")
-        console.log(w,"win");
-        await GetSurviveHands(werewolf)
-    })*/
 
     it("is day 0",async function(){
         //Prepare the game
         players = [user1, user2, user3, user4, user5, user6]
         n = players.length
-        await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
+        var i
+        for(i=0; i<n;i++){
+            await werewolf.engagePlayer(players[i],{from:admin})
+        }
+        //await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
         await werewolf.createCards({from: admin})
         werewolfCard = await werewolf.werewolfCard()// TODO: no on-chain read
         console.log("easy shuffle...")

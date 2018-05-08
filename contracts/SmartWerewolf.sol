@@ -17,6 +17,7 @@ contract SmartWerewolf {
     uint[2] G;
     mapping (address => uint) public playerNumOf;
     mapping(bytes32 => uint) public roleOf;
+    mapping(address => uint) public deposits;
     
     //up-to-date report (change in game)
     mapping(uint => uint) public living;
@@ -60,7 +61,137 @@ contract SmartWerewolf {
             theLivingNumOf[players[i].name]=i;
         }
     }
+
+    function depositGame(address player) external payable {
+        deposits[ player ] = msg.value;
+    }
+
+    /*function offChainEngage(address[] inPlayers) 
+        public 
+        returns(
+            uint nOut,
+            Player[] outPlayers,
+            uint[4] outLiving,
+            address[] outLivingPlayers
+        )
+    {
+        require(inPlayers.length >= 6);
+        uint i;
+        for(i = 0; i<inPlayers.length; i++){
+            address p = inPlayers[i];
+            require(deposits[p]>=100);
+        }
+
+        n = inPlayers.length;
+        nOut = n; 
+
+        players.length = 1+n;
+        outPlayers = new Player[](1+nOut);
+
+        for (i = 1; i <= n; i++) {
+            players[i] = Player
+            (
+                {
+                    name: inPlayers[ i-1 ],  
+                    live: true, 
+                    hand: [uint(0),0], 
+                    role: RoleTypes.Unseen,
+                    pokerKey: 0
+                }
+            );
+            outPlayers[i] = Player(players[i].name, players[i].live, [uint((players[i].hand)[0]),(players[i].hand)[1]], players[i].role, players[i].pokerKey);
+        
+        }
+        
+        outLiving[uint(RoleTypes.Werewolf)]=2;
+        outLiving[uint(RoleTypes.Seer)]=1;
+        outLiving[uint(RoleTypes.Villager)]=nOut-3;
+
+        outLivingPlayers = new address[](nOut+1);
+        for(i=1;i<=nOut;i++){
+            outLivingPlayers[i]=players[i].name;
+            //theLivingNumOf[players[i].name]=i;//how to output map?
+        }
+    }
     
+    function setPlayerIndex() public {
+        uint i;
+        for(i=1; i<=n; i++)
+        playerNumOf[players[i].name] = i;//how to output map?
+
+    }
+    */
+    function engagePlayer(address[] inPlayers) 
+        public 
+    {   
+        require(inPlayers.length >= 6);
+        uint i;
+        for(i = 0; i<inPlayers.length; i++){
+            address p = inPlayers[i];
+            require(deposits[p]>=100);
+        }
+
+        n = inPlayers.length;
+        nOut = n; 
+
+        players.length = 1+n;
+        outPlayers = new Player[](1+nOut);
+
+        for (i = 1; i <= n; i++) {
+            players[i] = Player
+            (
+                {
+                    name: inPlayers[ i-1 ],  
+                    live: true, 
+                    hand: [uint(0),0], 
+                    role: RoleTypes.Unseen,
+                    pokerKey: 0
+                }
+            );
+            
+            emit JoinPlayer(
+                i, 
+                players[i].name, 
+                players[i].live, 
+                [uint((players[i].hand)[0]),(players[i].hand)[1]], 
+                players[i].role, 
+                players[i].pokerKey,
+            );
+
+        }
+
+
+        require(deposits[inPlayer]>=100);
+        if(players.length == 0)
+            players.length=1;
+        players.push(Player({name: inPlayer, live: true, hand: [uint(0),0], role: RoleTypes.Unseen, pokerKey: 0}));
+        playerNumOf[inPlayer] = players.length - 1;
+        uint i = playerNumOf[inPlayer];
+
+        emit JoinPlayer(
+            i, 
+            players[i].name, 
+            players[i].live, 
+            [uint((players[i].hand)[0]),(players[i].hand)[1]], 
+            players[i].role, 
+            players[i].pokerKey,
+        );
+    }
+    
+    
+   //read off-chain(from js) 
+    function regTheLiving public view returns(
+        uint livingPlayerNum,
+        address livingPlayerName
+        )
+    {
+        i,
+        players[i].name
+        living[uint(RoleTypes.Werewolf)]=2;
+        living[uint(RoleTypes.Seer)]=1;
+        living[uint(RoleTypes.Villager)]=n-3;
+    }
+
     //2-1 印製牌
     //(a) 印牌面   
     function createCards() public {   
@@ -260,8 +391,14 @@ contract SmartWerewolf {
         uint iAmLive;
         uint victimLive;
     }
-    
-    event PlayerReady(uint numPlayers);
    
     event debug(uint i);
+    event JoinPlayer(
+        uint outPlayerNum,
+        address outPlayerName,
+        bool outPlayerLive,
+        uint[2] outPlayerHand,
+        RoleTypes outPlayerRole,
+        uint outPlayerKey,
+    );
 }
