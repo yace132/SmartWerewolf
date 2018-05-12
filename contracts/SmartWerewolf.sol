@@ -20,7 +20,7 @@ contract SmartWerewolf {
     mapping(address => uint) public deposits;
     
     //up-to-date report (change in game)
-    mapping(uint => uint) public living;
+    uint[4] public living;
     address[] public livingPlayers;
     mapping(address => uint) public theLivingNumOf;
     string public winner;
@@ -62,86 +62,32 @@ contract SmartWerewolf {
         }
     }
 
-    function depositGame(address player) external payable {
-        deposits[ player ] = msg.value;
-    }
-
-    /*function offChainEngage(address[] inPlayers) 
-        public 
-        returns(
-            uint nOut,
-            Player[] outPlayers,
-            uint[4] outLiving,
-            address[] outLivingPlayers
-        )
-    {
-        require(inPlayers.length >= 6);
-        uint i;
-        for(i = 0; i<inPlayers.length; i++){
-            address p = inPlayers[i];
-            require(deposits[p]>=100);
-        }
-
-        n = inPlayers.length;
-        nOut = n; 
-
-        players.length = 1+n;
-        outPlayers = new Player[](1+nOut);
-
-        for (i = 1; i <= n; i++) {
-            players[i] = Player
-            (
-                {
-                    name: inPlayers[ i-1 ],  
-                    live: true, 
-                    hand: [uint(0),0], 
-                    role: RoleTypes.Unseen,
-                    pokerKey: 0
-                }
+    function quickDepositGame() external payable {
+        deposits[msg.sender] = msg.value;
+        emit Deposit(
+                msg.sender,
+                deposits[msg.sender]
             );
-            outPlayers[i] = Player(players[i].name, players[i].live, [uint((players[i].hand)[0]),(players[i].hand)[1]], players[i].role, players[i].pokerKey);
-        
-        }
-        
-        outLiving[uint(RoleTypes.Werewolf)]=2;
-        outLiving[uint(RoleTypes.Seer)]=1;
-        outLiving[uint(RoleTypes.Villager)]=nOut-3;
-
-        outLivingPlayers = new address[](nOut+1);
-        for(i=1;i<=nOut;i++){
-            outLivingPlayers[i]=players[i].name;
-            //theLivingNumOf[players[i].name]=i;//how to output map?
-        }
     }
-    
-    function setPlayerIndex() public {
-        uint i;
-        for(i=1; i<=n; i++)
-        playerNumOf[players[i].name] = i;//how to output map?
 
-    }
-    */
-    function engagePlayer(address[] inPlayers) 
+    function quickEngagePlayers(address[] inPlayerNames) 
         public 
     {   
-        require(inPlayers.length >= 6);
+        require(inPlayerNames.length >= 6);
         uint i;
-        for(i = 0; i<inPlayers.length; i++){
-            address p = inPlayers[i];
+        for(i = 0; i<inPlayerNames.length; i++){
+            address p = inPlayerNames[i];
             require(deposits[p]>=100);
         }
 
-        n = inPlayers.length;
-        nOut = n; 
-
+        n = inPlayerNames.length;
         players.length = 1+n;
-        outPlayers = new Player[](1+nOut);
 
         for (i = 1; i <= n; i++) {
             players[i] = Player
             (
                 {
-                    name: inPlayers[ i-1 ],  
+                    name: inPlayerNames[ i-1 ],  
                     live: true, 
                     hand: [uint(0),0], 
                     role: RoleTypes.Unseen,
@@ -150,46 +96,38 @@ contract SmartWerewolf {
             );
             
             emit JoinPlayer(
-                i, 
+                //for mapping
+                i,
+                //for players 
                 players[i].name, 
                 players[i].live, 
                 [uint((players[i].hand)[0]),(players[i].hand)[1]], 
                 players[i].role, 
-                players[i].pokerKey,
+                players[i].pokerKey
             );
-
+            
+            emit RegLivingPlayer(
+                i,
+                players[i].name
+                );
         }
-
-
-        require(deposits[inPlayer]>=100);
-        if(players.length == 0)
-            players.length=1;
-        players.push(Player({name: inPlayer, live: true, hand: [uint(0),0], role: RoleTypes.Unseen, pokerKey: 0}));
-        playerNumOf[inPlayer] = players.length - 1;
-        uint i = playerNumOf[inPlayer];
-
-        emit JoinPlayer(
-            i, 
-            players[i].name, 
-            players[i].live, 
-            [uint((players[i].hand)[0]),(players[i].hand)[1]], 
-            players[i].role, 
-            players[i].pokerKey,
-        );
+        emit RegLivingRole([uint(0),2,1,n-3]);
+        emit PlayerReady(n);
     }
+    event RegLivingPlayer(uint livingPlayerNum, address livingPlayerName);
+    event RegLivingRole(uint[4] outLiving);
     
-    
-   //read off-chain(from js) 
-    function regTheLiving public view returns(
+    //read off-chain(from js) 
+    function regTheLiving(address ) public view returns(
         uint livingPlayerNum,
         address livingPlayerName
         )
     {
-        i,
+        /*i,
         players[i].name
         living[uint(RoleTypes.Werewolf)]=2;
         living[uint(RoleTypes.Seer)]=1;
-        living[uint(RoleTypes.Villager)]=n-3;
+        living[uint(RoleTypes.Villager)]=n-3;*/
     }
 
     //2-1 印製牌
@@ -277,7 +215,7 @@ contract SmartWerewolf {
         }
     }
 
-    function roleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
+    function checkRoleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
     function cardOrder() public pure returns(uint) {return q;}
     function getHandOf(address name) public view returns(uint[2] hand){
         uint i = playerNumOf[name];
@@ -339,6 +277,12 @@ contract SmartWerewolf {
        
     }
 
+    function recoverRole(uint me, uint pokerKey, uint[2] cipherCard) external view returns (uint[2] decryptCard){
+            uint keyInverse = ECCMath_noconflict.invmod(pokerKey, q);
+            (decryptCard[0],decryptCard[1]) = multiply(keyInverse, cipherCard);
+       
+    }
+
     function killed(address player) internal{
         uint i = playerNumOf[player];
         players[i].live=false;
@@ -393,12 +337,20 @@ contract SmartWerewolf {
     }
    
     event debug(uint i);
+    
     event JoinPlayer(
-        uint outPlayerNum,
+        uint indexed outPlayerNum,
         address outPlayerName,
         bool outPlayerLive,
         uint[2] outPlayerHand,
         RoleTypes outPlayerRole,
-        uint outPlayerKey,
+        uint outPlayerKey
     );
+
+    event Deposit(
+        address indexed outPlayerName,
+        uint outValue
+    );
+
+    event PlayerReady(uint numPlayers);
 }

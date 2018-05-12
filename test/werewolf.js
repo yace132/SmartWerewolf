@@ -4,11 +4,11 @@ const Werewolf = artifacts.require("./SmartWerewolf.sol")
 const myBigNumber = require('BigNumber.js')
 myBigNumber.config({ MODULO_MODE: myBigNumber.EUCLID })
 const fs = require('fs')
-const readline = require('readline');
+/*const readline = require('readline');
 const getLine = readline.createInterface({
   input: process.stdin,
   output: process.stdout
-});
+});*/
 
 
 
@@ -21,11 +21,23 @@ contract('SmartWerewolf', function(accounts) {
     const user4 = accounts[4]
     const user5 = accounts[5]
     const user6 = accounts[6]
-    var pok, werewolf, abi, me, order, werewolfCard, players, n, numSurvive
+    var pok, werewolf, abi, me, order, werewolfCard, playerNames, n, numSurvive
+    
+    var players =[]
+    var playerNumOf ={}
+    var deposits = {}
     var initialHands = []
     var hands = []
-    var pokerKeys = [0, 0xabc,0xa55bf4, 0xa, 0x80c03,0x3443, 0x255]
+    var pokerKeys = [
+        0, 
+        0x1e6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36da4e974d162f,
+        0x2accc8e4a1235a6d2687f1a7e3ba17bc98c673636790f1b8ad91cc3c05875ef1,
+        0x388b70312345bea894b6aeff5a544fb92e78a18e19814cd85dd83b71f772aa6c, 
+        0x488c684f0ba1aaaaaa716adb5d21a053ea8e90277d0868337229f97bede61418,
+        0x559cbb0e2411bbbbbb3778987b1e22153c086a95e00018bdf89de078917abc63, 
+        0x62d052c865f5763aad42add43856927612345678a00062d36b2bae914d58b8c8]
     var pfs = []
+    var RoleTypes = ["Unseen","Werewolf","Seer","villager"]
 
     const generateZKProof = function () {
         // generate zk here
@@ -101,39 +113,114 @@ contract('SmartWerewolf', function(accounts) {
             }
             out.end()
         }
-    function regTheLiving()
-    
-    before( async ()=> {     
-        pok = await PoK.new({from: admin})
-        werewolf = await Werewolf.new(pok.address, {from: admin})
+
+    async function searchLog(keywordEvent){
+        return new Promise(function (resolve, reject){
+            keywordEvent.watch(function(err,event){
+                if(err){
+                    reject(err)
+                }else{
+                    resolve(event.args)
+                } 
+            })
+        })
+    }
+
+    function str(objBN,tag){
+        let stringBN
+        let result
+        if(tag["point"]){
+            result = [str(objBN[0],{}),str(objBN[1],{})]
+        }else{        
+            if(objBN <=100){
+                stringBN = objBN.toString(10)
+                result = stringBN
+            }else{
+                stringBN = objBN.toString(16)
+                result = "0x"+stringBN[0]+stringBN[1]+stringBN[2]+stringBN[3]+stringBN[4]+" ... "
+            }
+        }
+        return result
+    }
+
+    before( async ()=> {
+        console.log("execute werewolf program")
+        werewolf = await Werewolf.deployed()
+        console.log("\t[ chain ] << deploy werewolf contract at",werewolf.address)
         order = await werewolf.cardOrder()//(read from chain only 1 time)
     })
 
     it("is day 0",async function(){
         //Prepare the game
-        players = [user1, user2, user3, user4, user5, user6]
-        n = players.length
+        playerNames = [user1, user2, user3, user4, user5, user6]
+        n = playerNames.length
         var i
-        for(i=0; i<n;i++){
-            await werewolf.engagePlayer(players[i],{from:admin})
+        for(i=0; i<n; i++){
+            console.log("\nplayer",i+1,"prepare deposit $100")
+            let p = playerNames[i]
+            let v = 100
+            console.log("\t[ chain ] << player",p,"send",v)
+            await werewolf.quickDepositGame({from: p, value:100})
+            console.log("update deposit of player",p)
+            let keywordDeposit = werewolf.Deposit({outPlayerName: p})
+            let DepositLog = await searchLog(keywordDeposit)
+            let playerName = DepositLog.outPlayerName
+            let value = DepositLog.outValue
+            console.log("\t[ chain ] >> deposits[",playerName,"] = ",str(value,{}))
+            deposits[playerName] = value 
+            console.log("\t[players] << deposits[",playerName,"] = ",str(deposits[playerName],{}))
         }
-        //await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
+        console.log("\nengage players")
+        //await werewolf.engagement(playerNames, {from: admin})
+        console.log("\t[ chain ] <<","admin",admin,"\n\tengage players\n\t",playerNames)
+        await werewolf.quickEngagePlayers(playerNames,{from:admin})
+        for(i=1; i<=n; i++){
+            console.log("\nupdate informations of player",i)
+            let keywordJoinPlayer = werewolf.JoinPlayer({outPlayerNum:i})
+            let JoinPlayerLog = await searchLog(keywordJoinPlayer)
+            let playerNum = JoinPlayerLog.outPlayerNum
+            let playerName = JoinPlayerLog.outPlayerName
+            let playerLive = JoinPlayerLog.outPlayerLive
+            let playerHand = JoinPlayerLog.outPlayerHand
+            let playerRole = JoinPlayerLog.outPlayerRole
+            let playerKey = JoinPlayerLog.outPlayerKey
+            console.log("\t[ chain ] >> players[",str(playerNum,{}),"] ={" ,
+                "\n\t\tname:",playerName,
+                "\n\t\tlive:",playerLive,
+                "\n\t\thand",str(playerHand,{"point":true}),
+                "\n\t\trole:",str(playerRole,{}),
+                "\n\t\tpokerKey:",str(playerKey,{}),
+                "\n\t}")
+            players[playerNum] = {
+                name: playerName,
+                live: playerLive,
+                hand: playerHand,
+                role: playerRole,
+                pokerKey: playerKey
+            }
+            playerNumOf[playerName] = playerNum
+            let p = players[playerNum]
+            console.log("\t[players] << players[",str(playerNum,{}),"] ={" ,
+                "\n\t\tname:",p.name,
+                "\n\t\tlive:",p.live,
+                "\n\t\thand",str(p.hand,{"point":true}),
+                "\n\t\trole:",str(p.role,{}),
+                "\n\t\tpokerKey:",str(p.pokerKey,{}),
+                "\n\t}")
+        }
+        //console.log("players",players)
+        //console.log("playerNumOf",playerNumOf)
+        console.log("[on-chain r/w] Design face for each card")
         await werewolf.createCards({from: admin})
         werewolfCard = await werewolf.werewolfCard()// TODO: no on-chain read
-        console.log("easy shuffle...")
+        console.log("[on-chain r/w] Quick shuffle...")
         //await prepareHands()
-        /* try to stop here 
-        await getLine.question("How are you? ", function(answer) {
-            console.log("Bye", answer);
-            getLine.close();
-        });*/
         var stringHands
         fs.readFile('initialHands.txt','utf8', (err,data)=>{
             stringHands =data
             let start = 0
             let i =1
             for(i = 1; i<=n; i++){
-                console.log('deal card to',i)
                 let camma = stringHands.indexOf(',',start)
                 let endline = stringHands.indexOf('\n',start)
                 let x = new myBigNumber(stringHands.substring(start, camma),16)
@@ -142,7 +229,8 @@ contract('SmartWerewolf', function(accounts) {
                 start = endline + 1
                 }      
         })
-       
+
+        
     })
 
     it("can kill at night",async function(){
@@ -158,16 +246,28 @@ contract('SmartWerewolf', function(accounts) {
         }
 
         console.log("It's Night 1 ---")
+        
+        console.log("\t           role (secret)\tpokerKey (secret)\t\thand (public)")
+        for(let i=1; i<=n; i++){
+            let hand = hands[i]
+            let roleCard = await werewolf.recoverRole(i, pokerKeys[i], hands[i])
+            let roleIndex = await werewolf.checkRoleOf(roleCard)
+            let role = RoleTypes[roleIndex]
+
+            console.log("\tplayer "+i+" : "+role+"\t\t"+str(pokerKeys[i],{})+"\t\t"
+            +str(hand,{"point":true}))
+        }   
+        
         //werewolf killing input: hands & pokerKey
-        console.log("\tWerewolf genarates proof ...")
+        console.log("\n\t[off-chain r/w] Werewolf genarates proof ...")
         me = 1
         console.log("\t(I am player ",me,",I try to create proof secretly)")
         let pokerKey = pokerKeys[me]
         let numSurvive = await werewolf.numSurvive()// TODO: no on-chain read
         //let hands = await getSurviveHands(numSurvive, werewolf)// TODO: no on-chain read
-        let victimNum = 1
+        let victimNum = 3
         
-       
+/*
         //prepare real proof
         let totalFakeC = new myBigNumber(0);
         let Ts = []
@@ -178,7 +278,7 @@ contract('SmartWerewolf', function(accounts) {
             let framedHand = hands[i]
             let proofArray = await werewolf.werewolfFrameKilling(framedHand, werewolfCard, victimNum)// TODO: no read on-chain 
             pfs[i] = proofFromArray(proofArray)
-            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werewolf !")
+            console.log("\n\t\tproof "+i+" => Prove I am player "+i+" and I am werewolf !")
 
             Ts[i] = pfs[i].T
             //print(pfs[i])
@@ -191,7 +291,7 @@ contract('SmartWerewolf', function(accounts) {
             let framedHand = hands[i]
             let proofArray = await werewolf.werewolfFrameKilling(framedHand, werewolfCard, victimNum)
             pfs[i] = proofFromArray(proofArray)
-            console.log("\n\tproof "+i+" = Prove I am player "+i+" and I am werewolf !")
+            console.log("\n\t\tproof "+i+" => Prove I am player "+i+" and I am werewolf !")
 
             Ts[i] = pfs[i].T
             totalFakeC = totalFakeC.plus(pfs[i].c).modulo(order);
@@ -207,12 +307,13 @@ contract('SmartWerewolf', function(accounts) {
         let proofArray = await werewolf.werewolfProve(pokerKey, werewolfCard, hands[me], victimNum,  realt ,realc)      
         pfs[me] = proofFromArray(proofArray)
         
-        console.log("\n\tproof "+me+" = Prove I am player "+me+" and I am werewolf !")
-        let publishMessage = "0x"+pfs[me].victim.toString(16)
+        console.log("\n\t\tproof "+me+" => Prove I am player "+me+" and I am werewolf !")
+        let publishMessage = "I want to kill player "+pfs[me].victim.toString(16)
+        console.log("message =", publishMessage)*/
     })
-
+/*
     it("then verify proofs",async function(){
-        //console.log("I want to prove I am werewolf, and I am one of the alive players ----- hash -----> challenge",realChallenge.toString(16))
+        //console.log("I want to prove I am werewolf, and I am one of the alive playerNames ----- hash -----> challenge",realChallenge.toString(16))
         let victimNum = pfs[1].victim
         let Ts = []
         let cTotal = new myBigNumber(0);
@@ -220,6 +321,7 @@ contract('SmartWerewolf', function(accounts) {
         
         let numSurvive = await werewolf.numSurvive()// TODO: no on-chain read
         let pokHands = passHandsToPoK(hands, numSurvive)
+        console.log("[off-chain r] Everyone can verify proof")
         for(i=1; i<= numSurvive; i++){    
             let proof = pfs[i]
             console.log("\tverify proof "+i+":")
@@ -228,14 +330,14 @@ contract('SmartWerewolf', function(accounts) {
             if(result == true) console.log("\t\tMaybe he is player "+i+" and he is werewolf ")
             else console.log("\t\the is not player "+i+" Or he is not werewolf")
             Ts[i] = pfs[i].T
-            print(pfs[i])
+            //print(pfs[i])
             cTotal = cTotal.plus(pfs[i].c).modulo(order);
         }
         let realChallenge = new myBigNumber(await werewolf.computeChallenge(werewolfCard, pokHands, victimNum,Ts))
         console.log("\tVerify signature and message :",cTotal.equals(realChallenge))
 
     })
-
+*/
     /*it("pass Humans' victory", async function() {
         let werewolf = await Werewolf.new({from: admin})
         
@@ -270,62 +372,9 @@ contract('SmartWerewolf', function(accounts) {
         assert.equal(w,"Humans","Winner shold be Werewolves.")
         console.log(w,"win");
         //await GetSurviveHands(werewolf)
-    })
-
-    it("can collect hands ", async function() {
-        let werewolf = await Werewolf.new({from: admin})
-        console.log("at:", werewolf.address)
-        //day 0 (Prepare the game)
-        await werewolf.engagement([user1, user2, user3, user4, user5, user6], {from: admin})
-        await werewolf.createCards({from: admin})
-        await werewolf.shuffleCards({from: admin})
-        await werewolf.dealCards({from: admin})
-        
-        var i
-        
-        console.log("Start! live players' :")
-        
-        //await GetSurviveHands(werewolf)
-       
-
-        console.log("It's Night 1 ---")
-        
-
-        var proofCanKill = generateZKProof()
-        var victimName = user1 // should be satisfied to the proofCanKill proof
-        await werewolf.nightKill(victimName, proofCanKill, {from: admin})
-        await werewolf.openRole(3, 456, {from: user1})
-        
-        //await GetSurviveHands(werewolf)
-
-        console.log("\nIt's Day 1   ---")
-        await werewolf.dayVoting(user2)
-        await werewolf.openRole(1, 456, {from: user2})
-
-        //await GetSurviveHands(werewolf)
-        
-        console.log("\nIt's Night 2 ---")
-        proofCanKill = generateZKProof()
-        victimName = user3
-        await werewolf.nightKill(victimName, proofCanKill, {from: admin})
-        await werewolf.openRole(2, 456, {from: user3})
-        var w = await werewolf.winner();//需要等getter function, enum 只能用數字確認
-        assert.equal(w, 0, "Winner wasn't determined at that time.")
-        
-        //await GetSurviveHands(werewolf)
-
-        console.log("\nIt's Day 2   ---")
-        await werewolf.dayVoting(user4)
-        await werewolf.openRole(3, 456, {from: user4})
-        //await GetSurviveHands(werewolf)
-
-        w = await werewolf.winner()
-        assert.equal(w,"Werewolves","Winner shold be Werewolves.")
-        console.log(w,"win");
-
-       
-        
     })*/
+
+    
 
     after(  async ()=> {     
         //console.log("get contract informations ... ")
