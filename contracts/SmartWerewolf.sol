@@ -148,18 +148,66 @@ contract SmartWerewolf {
             generateMap(deck[j], RoleTypes.Villager);
         }
     }
+
+    function quickCreateCard(
+        uint i,
+        uint inMPC
+        ) 
+        external
+        view 
+        returns(
+            uint[2] outCard, 
+            uint cardNum, 
+            uint roleNum
+            )
+        {   
+        (outCard[0], outCard[1]) = multiply(inMPC, G);
+        RoleTypes outRole;
+        if(i == 0){
+            outRole = RoleTypes.Unseen;
+        }else if(i<=2){
+            outRole = RoleTypes.Werewolf;
+        }else if(i==3){
+            outRole = RoleTypes.Seer;
+        }else{
+            outRole = RoleTypes.Villager;
+        }
+        (cardNum,roleNum)= quickGenerateMap(outCard, outRole);
+    }
+
+
     function shuffleCardBy(uint i, uint pokerKey) external{
         //encrypt each card
         uint printBack = pokerKey; 
         for(uint k=0; k<=n; k++){
             (deck[k][0], deck[k][1]) = multiply(printBack, deck[k]);
         }
-        //any shuffle
-        /*uint[2] memory tmp;
+        //support any shuffle
+        /* for example
+        uint[2] memory tmp;
         uint j = ((i+3)-1) % n + 1;
         (tmp[0], tmp[1]) = (deck[j][0], deck[j][1]);
         (deck[j][0], deck[j][1]) = (deck[i][0], deck[i][1]);
-        (deck[i][0], deck[i][1]) = (tmp[0], tmp[1]);*/
+        (deck[i][0], deck[i][1]) = (tmp[0], tmp[1]);
+        */
+    }
+
+    function quickShuffleCardBy(
+        uint i, 
+        uint pokerKey, 
+        uint[2][] inDeck, 
+        uint numCards
+        ) 
+        external 
+        view 
+        returns(uint[2][] outDeck){
+        //encrypt each card
+        uint printBack = pokerKey;
+        outDeck = new uint[2][](1+numCards); 
+        for(uint k=0; k<=numCards; k++){
+            (outDeck[k][0], outDeck[k][1]) = multiply(printBack, inDeck[k]);
+        }
+        //support any shuffle
     }
     //TODO:(b)洗牌、印製牌背  
     function shuffleCards() public {
@@ -214,7 +262,7 @@ contract SmartWerewolf {
             winner = "Humans";
         }
     }
-
+    function hashCard(uint[2] card) public pure returns(uint){return uint(keccak256(card));}
     function checkRoleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
     function cardOrder() public pure returns(uint) {return q;}
     function getHandOf(address name) public view returns(uint[2] hand){
@@ -256,6 +304,13 @@ contract SmartWerewolf {
     function prepareDeck(uint i) internal {
         
         MPC[ i ] = (i+123) % q;
+        //avoid use 0. function toZ1 revert at point at infinity
+    
+    }
+
+    function quickPrepareDeck(uint i) public view returns(uint outMPC){
+        
+        outMPC = (i+123) % q;
         //avoid use 0. function toZ1 revert at point at infinity
     
     }
@@ -307,6 +362,23 @@ contract SmartWerewolf {
         
         roleOf[keccak256(card)] = uint(role);
     
+    }
+
+    function quickGenerateMap(
+        uint[2] card, 
+        RoleTypes role
+    ) 
+        public
+        pure
+        returns(
+            uint cardNum,
+            uint roleNum
+        )
+    {
+        return(
+            uint(keccak256(card)),
+            uint(role)
+            );
     }
 
     function verifyRole(RoleTypes _role, uint _pokerKey) pure internal returns(bool){
