@@ -71,7 +71,7 @@ contract OrPoK {
         
         uint[3] memory secretG = Secp256k1_noconflict._mul(secret, g);
         ECCMath_noconflict.toZ1(secretG,p);
-        require(secretG[0] == A[0] && secretG[1] == A[1]);//require can be used off-chain 
+        require(secretG[0] == A[0] && secretG[1] == A[1],"rrrrrrrrr");//require can be used off-chain 
         
         uint t;
         if(tReady != 0 && cReady != 0){

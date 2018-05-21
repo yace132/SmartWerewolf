@@ -30,8 +30,21 @@ contract SmartWerewolf {
         G[0] = Gx;
         G[1] = Gy;
     }
+    
 
-    //1. 集合玩家
+    //0. 付保證金
+
+    function quickDepositGame() external payable {
+        deposits[msg.sender] = msg.value;
+        emit Deposit(
+                msg.sender,
+                deposits[msg.sender]
+            );
+    }
+
+    
+    //1. 集合玩家 (V)
+
     function engagement(address[] _players) public {
         require(_players.length >= 6);
         n = _players.length;
@@ -60,14 +73,6 @@ contract SmartWerewolf {
             livingPlayers[i]=players[i].name;
             theLivingNumOf[players[i].name]=i;
         }
-    }
-
-    function quickDepositGame() external payable {
-        deposits[msg.sender] = msg.value;
-        emit Deposit(
-                msg.sender,
-                deposits[msg.sender]
-            );
     }
 
     function quickEngagePlayers(address[] inPlayerNames) 
@@ -114,24 +119,12 @@ contract SmartWerewolf {
         emit RegLivingRole([uint(0),2,1,n-3]);
         emit PlayerReady(n);
     }
-    event RegLivingPlayer(uint livingPlayerNum, address livingPlayerName);
-    event RegLivingRole(uint[4] outLiving);
     
-    //read off-chain(from js) 
-    function regTheLiving(address ) public view returns(
-        uint livingPlayerNum,
-        address livingPlayerName
-        )
-    {
-        /*i,
-        players[i].name
-        living[uint(RoleTypes.Werewolf)]=2;
-        living[uint(RoleTypes.Seer)]=1;
-        living[uint(RoleTypes.Villager)]=n-3;*/
-    }
+    
+    //2-1 印製牌 (V)
 
-    //2-1 印製牌
     //(a) 印牌面   
+
     function createCards() public {   
         MPC.length = deck.length = 1+n;
         for(uint i=0; i <= n; i++ ){
@@ -175,21 +168,31 @@ contract SmartWerewolf {
         (cardNum,roleNum)= quickGenerateMap(outCard, outRole);
     }
 
+    //(b)洗牌、印製牌背 
 
-    function shuffleCardBy(uint i, uint pokerKey) external{
+    function shuffleCards() public {
+        uint printBack = 0x7717; 
+        for(uint i=0; i<=n; i++){
+            (deck[i][0], deck[i][1]) = multiply(printBack, deck[i]);
+        }
+        uint[2] memory tmp;
+        (tmp[0], tmp[1]) = (deck[2][0], deck[2][1]);
+        (deck[2][0], deck[2][1]) = (deck[5][0], deck[5][1]);
+        (deck[5][0], deck[5][1]) = (tmp[0], tmp[1]);
+    } 
+
+    function shuffleCardBy(
+        uint i, 
+        uint pokerKey
+        ) 
+            external
+    {
         //encrypt each card
         uint printBack = pokerKey; 
         for(uint k=0; k<=n; k++){
             (deck[k][0], deck[k][1]) = multiply(printBack, deck[k]);
         }
         //support any shuffle
-        /* for example
-        uint[2] memory tmp;
-        uint j = ((i+3)-1) % n + 1;
-        (tmp[0], tmp[1]) = (deck[j][0], deck[j][1]);
-        (deck[j][0], deck[j][1]) = (deck[i][0], deck[i][1]);
-        (deck[i][0], deck[i][1]) = (tmp[0], tmp[1]);
-        */
     }
 
     function quickShuffleCardBy(
@@ -207,21 +210,12 @@ contract SmartWerewolf {
         for(uint k=0; k<=numCards; k++){
             (outDeck[k][0], outDeck[k][1]) = multiply(printBack, inDeck[k]);
         }
-        //support any shuffle
+        //support any shuffle TODO: some shuffle
     }
-    //TODO:(b)洗牌、印製牌背  
-    function shuffleCards() public {
-        uint printBack = 0x7717; 
-        for(uint i=0; i<=n; i++){
-            (deck[i][0], deck[i][1]) = multiply(printBack, deck[i]);
-        }
-        uint[2] memory tmp;
-        (tmp[0], tmp[1]) = (deck[2][0], deck[2][1]);
-        (deck[2][0], deck[2][1]) = (deck[5][0], deck[5][1]);
-        (deck[5][0], deck[5][1]) = (tmp[0], tmp[1]);
-    } 
+    
 
-    //TODO: 2-2. 發牌 
+    //2-2. 發牌 (V)
+
     function dealCards() public {
         for(uint i=1; i<=n; i++){
             (players[i].hand[0], players[i].hand[1])  
@@ -230,9 +224,14 @@ contract SmartWerewolf {
         helpDecryptRole();
     }
 
-    function dealCardTo(uint i) external view returns(uint[2] hand){
+    function dealCardTo(uint i) 
+        external        
+        view 
+        returns(uint[2] hand){
         (hand[0],hand[1])=(deck[i][0], deck[i][1]);
     }
+
+    //3. 狼人殺人 (V)
 
     function nightKill(address victimName, uint proofCanKill) public {
         uint v = playerNumOf[victimName];
@@ -241,11 +240,15 @@ contract SmartWerewolf {
         killed(victimName);
     }
     
+    //4. 白天投票
+
     function dayVoting(address name) public {
         
         killed(name);
 
     }
+    
+    //5. open 腳色
 
     function openRole(RoleTypes _role, uint _pokerKey) public {
         require(verifyRole(_role, _pokerKey)==true);
@@ -262,9 +265,18 @@ contract SmartWerewolf {
             winner = "Humans";
         }
     }
-    function hashCard(uint[2] card) public pure returns(uint){return uint(keccak256(card));}
+
+
+    //getter functions
+    
+    function multiply(uint s, uint[2] point) public view returns(uint ,uint){
+        uint[3] memory result = Secp256k1_noconflict._mul(s, point);
+        ECCMath_noconflict.toZ1(result, p);
+        return (result[0],result[1]);
+    }
+
     function checkRoleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
-    function cardOrder() public pure returns(uint) {return q;}
+
     function getHandOf(address name) public view returns(uint[2] hand){
         uint i = playerNumOf[name];
         (hand[0] ,hand[1]) = ((players[i].hand)[0], (players[i].hand)[1]);
@@ -272,14 +284,24 @@ contract SmartWerewolf {
 
     function numSurvive() public view returns(uint) {return livingPlayers.length-1;}
 
+    function werewolfCard() 
+        external 
+        view 
+        returns(uint cardX,uint cardY){
+        (cardX, cardY) = (deck[1][0], deck[1][1]);
+    }
+
+    function hashCard(uint[2] card) public pure returns(uint){return uint(keccak256(card));}
+    
+    function cardOrder() public pure returns(uint) {return q;}
+    
+
+    //證明
+
     function werewolfFrameKilling(uint[2] framedHand, uint[2] _werewolfCard,  uint victim) public view returns(uint[2] __werewolfCard, uint[2] _framedHand, uint _victim, uint[3] T, uint c, uint s){
         return processPoK.forgeProof(_werewolfCard, framedHand, victim);
     }
 
-    function werewolfCard() external view returns(uint cardX,uint cardY){
-        (cardX, cardY) = (deck[1][0], deck[1][1]);
-    }
-    
     function werewolfChooset(uint pokerKey, uint[2][] hands, uint[2] _werewolfCard, uint victim ) external view returns(uint realt){
 
         return processPoK.computeRealt(_werewolfCard, hands, pokerKey, victim);
@@ -301,6 +323,40 @@ contract SmartWerewolf {
         return processPoK.verifySchnorr(_werewolfCard, hand, T, c, s);
     }
 
+
+    //驗證
+
+    function verify(uint proofCanKill, Player victim) pure internal returns(bool){
+        
+        return proofCanKill == 123 && victim.live == true;
+    }
+
+
+    //Prepare cards
+
+     function generateMap(uint[2] card, RoleTypes role) internal {
+        
+        roleOf[keccak256(card)] = uint(role);
+    
+    }
+
+    function quickGenerateMap(
+        uint[2] card, 
+        RoleTypes role
+    ) 
+        public
+        pure
+        returns(
+            uint cardNum,
+            uint roleNum
+        )
+    {
+        return(
+            uint(keccak256(card)),
+            uint(role)
+            );
+    }
+
     function prepareDeck(uint i) internal {
         
         MPC[ i ] = (i+123) % q;
@@ -315,6 +371,9 @@ contract SmartWerewolf {
     
     }
     
+    
+    //看手牌
+
     function helpDecryptRole() internal {
         for(uint i=1; i<=n; i++){
         	uint[2] storage hand = players[i].hand;
@@ -338,6 +397,9 @@ contract SmartWerewolf {
        
     }
 
+
+    //人死掉
+    
     function killed(address player) internal{
         uint i = playerNumOf[player];
         players[i].live=false;
@@ -351,46 +413,12 @@ contract SmartWerewolf {
         theLivingNumOf[player]=0;
     }
 
-
-    function multiply(uint s, uint[2] point) public view returns(uint ,uint){
-        uint[3] memory result = Secp256k1_noconflict._mul(s, point);
-        ECCMath_noconflict.toZ1(result, p);
-        return (result[0],result[1]);
-    }
-
-    function generateMap(uint[2] card, RoleTypes role) internal {
-        
-        roleOf[keccak256(card)] = uint(role);
-    
-    }
-
-    function quickGenerateMap(
-        uint[2] card, 
-        RoleTypes role
-    ) 
-        public
-        pure
-        returns(
-            uint cardNum,
-            uint roleNum
-        )
-    {
-        return(
-            uint(keccak256(card)),
-            uint(role)
-            );
-    }
-
     function verifyRole(RoleTypes _role, uint _pokerKey) pure internal returns(bool){
         
         return (_role!=RoleTypes.Unseen && _pokerKey==456);
     
     }
     
-    function verify(uint proofCanKill, Player victim) pure internal returns(bool){
-        
-        return proofCanKill == 123 && victim.live == true;
-    }
     
     enum RoleTypes{Unseen, Werewolf, Seer, Villager}
     
@@ -402,12 +430,14 @@ contract SmartWerewolf {
         uint pokerKey;
     }
 
+
    struct KillConditions{
         uint iAmWerewolf;
         uint iAmLive;
         uint victimLive;
     }
    
+
     event debug(uint i);
     
     event JoinPlayer(
@@ -425,4 +455,8 @@ contract SmartWerewolf {
     );
 
     event PlayerReady(uint numPlayers);
+    
+    event RegLivingPlayer(uint indexed livingPlayerNum, address livingPlayerName);
+    
+    event RegLivingRole(uint[4] outLiving);
 }
