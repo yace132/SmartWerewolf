@@ -71,7 +71,12 @@ contract OrPoK {
         
         uint[3] memory secretG = Secp256k1_noconflict._mul(secret, g);
         ECCMath_noconflict.toZ1(secretG,p);
-        require(secretG[0] == A[0] && secretG[1] == A[1],"rrrrrrrrr");//require can be used off-chain 
+        if(secretG[0] != A[0] || secretG[1] != A[1]){
+            (T[0],T[1],T[2]) = (secretG[0], secretG[1], secretG[2]);
+            c = 0;
+            s = 0;
+            return;//require can be used off-chain 
+        }
         
         uint t;
         if(tReady != 0 && cReady != 0){
@@ -302,6 +307,7 @@ contract OrPoK {
     function verifySchnorr(uint[2] g,uint[2] A, /*uint message,*/ uint[3] T, uint c, uint s) public view returns (bool result) {
         if (!Secp256k1_noconflict.isPubKey(A)) return false;
         if (!Secp256k1_noconflict.isPubKey(T)) return false;
+        if(c ==0 && s==0) return false;//catch the error in createSchnorr
         //1 Check c   
         //if (c!=uint(keccak256(g,A, message,T)) % q) return false;//Check the message
         

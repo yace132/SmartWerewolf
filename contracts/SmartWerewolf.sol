@@ -418,6 +418,23 @@ contract SmartWerewolf {
         return (_role!=RoleTypes.Unseen && _pokerKey==456);
     
     }
+    //TODO
+    function verifyRole(
+        uint[2] handFace, 
+        uint pokerKey, 
+        uint[2] handBack
+    )
+        public
+        view
+        returns(bool)
+    {
+        uint[2] memory claimHand;
+        (claimHand[0],claimHand[1]) = multiply(pokerKey,handFace);
+
+        return (handBack[0] == claimHand[0]) && (handBack[1] == claimHand[1]);
+    }
+
+    
     
     
     enum RoleTypes{Unseen, Werewolf, Seer, Villager}

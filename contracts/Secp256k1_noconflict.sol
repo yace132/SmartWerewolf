@@ -250,7 +250,7 @@ library Secp256k1_noconflict {
     // Multiplication dP. P affine, wNAF: w=5
     // Params: d, Px, Py
     // Output: Jacobian Q
-    function _mul(uint d, uint[2] memory P) internal constant returns (uint[3] memory Q) {
+    function _mul(uint d, uint[2] memory P) internal view returns (uint[3] memory Q) {
         //debug: (Q[0],Q[1],Q[2]) = (2,3,4);
         uint p = pp;
         if (d == 0) // TODO

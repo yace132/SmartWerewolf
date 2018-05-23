@@ -66,7 +66,7 @@ library ECCMath_noconflict {
     /// @param z2Inv The square of zInv
     /// @param prime The prime modulus.
     /// @return (Px", Py", 1)
-    function toZ1(uint[3] memory P, uint zInv, uint z2Inv, uint prime) internal constant {
+    function toZ1(uint[3] memory P, uint zInv, uint z2Inv, uint prime) internal pure {
         P[0] = mulmod(P[0], z2Inv, prime);
         P[1] = mulmod(P[1], mulmod(zInv, z2Inv, prime), prime);
         P[2] = 1;
@@ -77,7 +77,7 @@ library ECCMath_noconflict {
     /// @param PJ The point./*  */
     /// @param prime The prime modulus.
     /// @return (Px", Py", 1)
-    function toZ1(uint[3] PJ, uint prime) internal constant {
+    function toZ1(uint[3] PJ, uint prime) internal pure {
         uint zInv = invmod(PJ[2], prime);
         uint zInv2 = mulmod(zInv, zInv, prime);
         PJ[0] = mulmod(PJ[0], zInv2, prime);
