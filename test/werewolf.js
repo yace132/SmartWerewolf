@@ -1,6 +1,6 @@
 'use strict'
 const PoK = artifacts.require("./OrPoK.sol")
-const Werewolf = artifacts.require("./SmartWerewolf.sol")
+const programWerewolf = artifacts.require("./SmartWerewolf.sol")
 const myBigNumber = require('BigNumber.js')
 myBigNumber.config({ MODULO_MODE: myBigNumber.EUCLID })
 const fs = require('fs')
@@ -8,6 +8,7 @@ const { promisify } = require('util')
 const writeFile = promisify(fs.writeFile) 
 const readFile = promisify(fs.readFile)
 /*
+
 const readline = require('readline');
 const getLine = readline.createInterface({
   input: process.stdin,
@@ -46,9 +47,12 @@ contract('SmartWerewolf', function(accounts) {
     var living = []
     var livingPlayers = []
     var theLivingNumOf = {}
-    //in solidty: winner
-
-    var RoleTypes = ["Unseen","Werewolf","  Seer  ","villager"]// # => string
+    var winner
+    const Unseen = "Unseen"
+    const Werewolf = "Werewolf"
+    const Seer="  Seer  "
+    const Villager="Villager"
+    var RoleTypes = [Unseen,Werewolf,Seer,Villager]// # => string
 
     const POINT = {"point":true}
     var pokerKeys = [
@@ -66,9 +70,20 @@ contract('SmartWerewolf', function(accounts) {
         return 123
     }
 
+    const quickPrintSurvive = function() {
+        let livingPeople = "players "
+        for(let i=1; i<=quickNumSurvive(); i++){
+            let name = livingPlayers[i]
+            let j = playerNumOf[name]
+            livingPeople+=j
+            livingPeople+=", "
+        }
+        livingPeople+="are live !"
+        return livingPeople
+    }
+
     //on-chain state (read from chain)
     //We need off-chain state avoid writing to block chain
-    //TODO: change to off-chain
     const getSurviveHands = async function(num,w) {
         let hands = []
         for(var i=1; i<=num; i++){
@@ -97,6 +112,7 @@ contract('SmartWerewolf', function(accounts) {
         return player.hand
     }
 
+    //convenient functions
     function print(pf){
         let T = pf.T
         let c = pf.c
@@ -153,8 +169,8 @@ contract('SmartWerewolf', function(accounts) {
                 out.write(initialHands[i][0].toString(16)+','+initialHands[i][1].toString(16)+'\n')
             }
             out.end()
-            */
-        }
+        */
+    }
 
     async function searchLog(keywordEvent){
         return new Promise(function (resolve, reject){
@@ -196,6 +212,21 @@ contract('SmartWerewolf', function(accounts) {
         return result
     }
 
+    function opNoTab(where,access){
+        let str=""
+        if(where == "off-chain")
+            str+="[players]"
+            else if(where == "on-chain")
+                str += "[ chain ]"
+            else console.log("error in function op",where)
+        if(access == "w")
+            str+=" <<"
+            else if(access == "r")
+                str += " >>"
+            else console.log("error in function op",access)
+        return str
+    }
+
     function op(where,access){
         let str="\t\t"
         if(where == "off-chain")
@@ -211,6 +242,15 @@ contract('SmartWerewolf', function(accounts) {
         return str
     }
 
+    function title(level){
+        let tabs = ""
+        for(let i=1;i<=level;i++){
+            tabs += "\t"
+        }
+        return tabs
+    }
+
+    // game functions
     function quickWerewolfCard(){
         return deck[1]
     }
@@ -225,9 +265,9 @@ contract('SmartWerewolf', function(accounts) {
         let i = playerNumOf[player]
         players[i].live = false
         let j= theLivingNumOf[player]
-        
         for(let k=j; k<= livingPlayers.length-2 ; k++){
             livingPlayers[k] = livingPlayers[k+1]
+            
             theLivingNumOf[livingPlayers[k]]--
         }
         livingPlayers.pop()
@@ -261,12 +301,13 @@ contract('SmartWerewolf', function(accounts) {
         let i = playerNumOf[name]
         let p = players[i]
         if(p.live == true){
-            console.log("can only open the dead's role")
+            console.log(title(2)+"** can only open the dead's role !")
+            console.log(title(3)+"but player",i,"is still live")
             return 0
         }
         let result = await quickVerifyRole(name)
         if(result != true){
-            console.log("can't recover role of "+name)
+            console.log(title(2)+"** can't recover role of "+name)
             return 0
         }
         let {roleCard,pokerKey} = openCard[name]
@@ -276,12 +317,26 @@ contract('SmartWerewolf', function(accounts) {
 
         living[role]--
 
-        if(living[RoleTypes.indexOf("Werewolf")]==living[RoleTypes.indexOf("Seer")]+living[RoleTypes.indexOf("Villager")]){
+        if(living[RoleTypes.indexOf(Werewolf)]==living[RoleTypes.indexOf(Seer)]+living[RoleTypes.indexOf(Villager)]){
             winner = "Werewolves"
-        }
-        else if(living[RoleTypes.indexOf("Werewolf")]==0){
+        }else if(living[RoleTypes.indexOf(Werewolf)]==0){
             winner = "Humans"
-        }
+        }else
+            console.log(
+                title(2)+Werewolf,
+                ":",
+                living[RoleTypes.indexOf(Werewolf)]
+            )
+            console.log(
+                title(2)+Seer,
+                ":",
+                living[RoleTypes.indexOf(Seer)]
+            )
+            console.log(
+                title(2)+Villager,
+                ":",
+                living[RoleTypes.indexOf(Villager)]
+            )
         return p.role
     }
 
@@ -334,24 +389,25 @@ contract('SmartWerewolf', function(accounts) {
         pfs[me] = {w:[],hand:[], /*victim:0,*/T:[],c:0,s:0}
         var proofArray = await werewolf.werewolfProve(pokerKey, werewolfCard, hands[me], victimNum,  realt ,realc)
         pfs[me] = proofFromArray(proofArray)
-
+        console.log("\n\t\t\tWerewolf caculates","proof "+me+"... --> Prove I am player "+me+" and I am werewolf !")
         //catch error in werewolfProve
         if(pfs[me].c == 0 && pfs[me].s == 0){
-            console.log("You are not werewolf!")
-            console.log("You provide key:",pokerKey)
-            console.log("You frame player",me) 
-            console.log("Your key * werewolfCard = "+ str([pfs[me].T[0], pfs[me].T[1]],POINT)+" is not equal to the hand: "+str(hands[me],POINT))
+            console.log(title(4)+"** You are not werewolf ! Or you are not player",me)
+            console.log(title(5)+"You provide key:",str(pokerKey,{}))
+            console.log(title(5)+"You frame player",me) 
+            console.log(title(5)+"(Your key) * (werewolfCard)")
+            console.log(title(5)+str([pfs[me].T[0], pfs[me].T[1]],POINT))
+            console.log(title(5)+" =\\= his hand "+str(hands[me],POINT))
         }
         
-        console.log("\n\t\t\tWerewolf caculates","proof "+me+"... --> Prove I am player "+me+" and I am werewolf !")
+        
         let publishMessage = "I want to kill player "+victimNum
         console.log("\n\t\t** Werewolf signs the message:", publishMessage)
-        console.log("\t\t** Werewolf publishes PoK")
-        console.log("\t",op("off-chain","w"),"...")
         return {pfs, victimNum}
     }
 
     async function quickVerify(proofCanKill, victim){
+
         
         let pfs = proofCanKill
         let victimNum = playerNumOf[victim.name]
@@ -404,24 +460,27 @@ contract('SmartWerewolf', function(accounts) {
             return false        
         }else{
             quickKilled(victimName)
-            console.log(victimName,"is killed at night")
+            console.log(title(2)+"** player",v,"is killed at night")
+            
+            console.log(title(3)+opNoTab("off-chain","w"),"...")
             return true
         }
-        
+             
     }
     
     
 
     
-
+    //game execute
     before( async ()=> {
         console.log("\tExecute werewolf program !")
-        werewolf = await Werewolf.deployed()
+        werewolf = await programWerewolf.deployed()
         console.log("\t\t[ chain ] << deploy werewolf contract at",werewolf.address)
         order = await werewolf.cardOrder()//(read from chain only 1 time)
     })
 
     it("players can prepare deposits",async function(){
+        
         console.log("\n\tPlayers prepare deposits !")
         playerNames = [user1, user2, user3, user4, user5, user6]
         n = playerNames.length
@@ -441,8 +500,9 @@ contract('SmartWerewolf', function(accounts) {
             deposits[playerName] = value 
             console.log("\t\t\t[players] << deposits[",playerName,"] = ",str(deposits[playerName],{}))
         }
-
     })
+
+
 
     it("can engage players",async function(){
         console.log("\tEngage players !")
@@ -478,7 +538,7 @@ contract('SmartWerewolf', function(accounts) {
                 role: playerRole,
                 pokerKey: playerKey
             }
-            playerNumOf[playerName] = playerNum
+            playerNumOf[playerName] = playerNum.toNumber()
             let p = players[playerNum]
             console.log("\t\t\t[players] << player",str(playerNum,{}),
                 "\n\t\t\t\tname:",p.name,
@@ -493,16 +553,16 @@ contract('SmartWerewolf', function(accounts) {
             let RegLivingPlayer = await searchLog(werewolf.RegLivingPlayer({livingPlayerNum:i}))
             let {livingPlayerNum,livingPlayerName} = RegLivingPlayer
             livingPlayers[livingPlayerNum] = livingPlayerName
-            theLivingNumOf[livingPlayerName] = livingPlayerNum
+            theLivingNumOf[livingPlayerName] = livingPlayerNum.toNumber()
         }
 
         let RegLivingRole = await searchLog(werewolf.RegLivingRole())
         living = RegLivingRole.outLiving
         for(i =0; i<=3; i++)
-            living[i] = living[i].toNumber(10)
+            living[i] = living[i].toNumber()
     })
 
-    
+   
     it("can assign roles",async function(){    
         console.log("\tAssign role of player randomly !")
         console.log("\n\t\t** choose card face")
@@ -607,29 +667,108 @@ contract('SmartWerewolf', function(accounts) {
     it("werewolf can create proof of knowledge",async function(){
         console.log("\tIt's Night 1 ! Werewolf will kill a person !")
         let {pfs, victimNum} = await quickCreatePoK(1, pokerKeys[1], 4)
+
         publishProofs = pfs
-        publishVictim = players[5].name//players[victimNum].name
+        publishVictim = players[victimNum].name
+        console.log("\t\t** Werewolf publishes PoK ")
+        //for(let i=1;i<=n;i++)
+        //    print(publishProofs[i])
+        let j = playerNumOf[publishVictim]
+        console.log("\t\t   with message : I want to kill player", j)
+        console.log("\t",op("off-chain","w"),"...")
+        
         assert(typeof publishProofs != "undefined","can't await quickCreatePoK")
     })
     
     it("werewolf can kill",async function(){
         let result = await quickNightKill(publishVictim, publishProofs)
         if(result != true){
-            console.log("Reject the proof: not werewolf or provide wrong victim")
-            console.log("kill failed !")
+            console.log("\n"+title(2)+"** Reject the proof: not werewolf or provide wrong victim !")
+            console.log("\n"+title(2)+"** Kill failed ! May go to on-chain resolution")
         }
     })
 
     it("can open role",async function(){
+        console.log(title(1)+"The victim should open his role !")
         let i = 4
         let p = players[i]
         openCard[p.name] = quickOpenCard(selfRoles[i], pokerKeys[i])
         let role = await quickOpenRole(p.name)
         if(role)
-            console.log("open role: dead player",i,"is",role)
+            console.log(title(2)+"** open role: dead player",i,"is",role)
         else
-            console.log("open role failed")
+            console.log(title(2)+"** open role: failed !")
     })
+
+    it("Day 1 :  dayVoting",async function(){
+        console.log(title(1)+"Convenient test day voting !")
+        let i = 2
+        let p = players[i]
+        quickDayVoting(p.name)
+        console.log(title(2)+"kill player",i)
+        console.log(title(2)+quickPrintSurvive())
+        
+
+        openCard[p.name] = quickOpenCard(selfRoles[i], pokerKeys[i])
+        let role = await quickOpenRole(p.name)
+        if(role)
+            console.log(title(2)+"** open role: dead player",i,"is",role)
+        else
+            console.log(title(2)+"** open role: failed !")
+        if(winner)console.log(title(2)+"winner",winner)
+    })
+
+    it("Day 2 :  dayVoting",async function(){
+        console.log(title(1)+"Convenient test day voting !")
+        let i = 5
+        let p = players[i]
+        quickDayVoting(p.name)
+        console.log(title(2)+"kill player",i)
+        console.log(title(2)+quickPrintSurvive())
+
+        openCard[p.name] = quickOpenCard(selfRoles[i], pokerKeys[i])
+        let role = await quickOpenRole(p.name)
+        if(role)
+            console.log(title(2)+"** open role: dead player",i,"is",role)
+        else
+            console.log(title(2)+"** open role: failed !")
+        if(winner)console.log(title(2)+"winner",winner)
+    })
+
+    it("Day 3 :  dayVoting",async function(){
+        console.log(title(1)+"Convenient test day voting !")
+        let i = 3
+        let p = players[i]
+        quickDayVoting(p.name)
+        console.log(title(2)+"kill player",i)
+        console.log(title(2)+quickPrintSurvive())
+
+        openCard[p.name] = quickOpenCard(selfRoles[i], pokerKeys[i])
+        let role = await quickOpenRole(p.name)
+        if(role)
+            console.log(title(2)+"** open role: dead player",i,"is",role)
+        else
+            console.log(title(2)+"** open role: failed !")
+        if(winner)console.log(title(2)+"winner",winner)
+    })
+
+    it("Day 4 :  dayVoting",async function(){
+        console.log(title(1)+"Convenient test day voting !")
+        let i = 6
+        let p = players[i]
+        quickDayVoting(p.name)
+        console.log(title(2)+"kill player",i)
+        console.log(title(2)+quickPrintSurvive())
+
+        openCard[p.name] = quickOpenCard(selfRoles[i], pokerKeys[i])
+        let role = await quickOpenRole(p.name)
+        if(role)
+            console.log(title(2)+"** open role: dead player",i,"is",role)
+        else
+            console.log(title(2)+"** open role: failed !")
+        if(winner)console.log(title(2)+"winner",winner)
+    })
+
 
     after(  async ()=> {     
         //console.log("get contract informations ... ")
