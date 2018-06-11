@@ -24,7 +24,8 @@ contract SmartWerewolf {
     address[] public livingPlayers;
     mapping(address => uint) public theLivingNumOf;
     string public winner;
-    
+    Time gameClock;
+
     function SmartWerewolf(address addressPoK) public {
         processPoK = OrPoK(addressPoK);
         G[0] = Gx;
@@ -158,7 +159,7 @@ contract SmartWerewolf {
         RoleTypes outRole;
         if(i == 0){
             outRole = RoleTypes.Unseen;
-        }else if(i<=2){
+        }else if(i==1||i==2){
             outRole = RoleTypes.Werewolf;
         }else if(i==3){
             outRole = RoleTypes.Seer;
@@ -367,7 +368,9 @@ contract SmartWerewolf {
     function quickPrepareDeck(uint i) public view returns(uint outMPC){
         
         outMPC = (i+123) % q;
-        //avoid use 0. function toZ1 revert at point at infinity
+        //avoid use 0. b/c function toZ1 revert at point at infinity
+        //simulate hash function
+        //apply MPC in the future
     
     }
     
@@ -418,6 +421,8 @@ contract SmartWerewolf {
         return (_role!=RoleTypes.Unseen && _pokerKey==456);
     
     }
+    
+    /*
     //TODO
     function verifyRole(
         uint[2] handFace, 
@@ -433,12 +438,57 @@ contract SmartWerewolf {
 
         return (handBack[0] == claimHand[0]) && (handBack[1] == claimHand[1]);
     }
+    */
+    /*
+    function updateState(){
+    	require(verifyStateMessage()==True);
+    	updatePlayersState(lives, hands, roles, pokerKeys);
 
+    }
     
+    function updatePlayersState(
+    	//address[] names,
+        bool[] lives,
+        uint[2][] hands,
+        uint[] roles,
+        uint[] pokerKeys
+    ) 
+    	public 
+    {
+    	for(uint i=1;i<=n;i++){
+    		players[i].live = lives[i];
+    		(players[i].hand[0], players[i].hand[1])= (hands[i][0],hands[i][1]);
+    		players[i].role = roles[i];
+    		players[i].pokerKey = pokerKeys[i];
+    	}
+    }
+	*/
+    function updateRoleOfList(
+		uint[2][] roleCards
+    ) 
+    	public 
+    {
+    	generateMap(roleCards[0], RoleTypes.Unseen);
+        generateMap(roleCards[1], RoleTypes.Werewolf);
+        generateMap(roleCards[2], RoleTypes.Werewolf);
+        generateMap(roleCards[3], RoleTypes.Seer);
+        for (uint j = 4; j <= n; j++) {
+            generateMap(roleCards[j], RoleTypes.Villager);
+        }
+    }
+
+    function signState(){
+
+    }
+
+    function verifyStateMessage(bytes stateMessage){
+
+    }
     
     
     enum RoleTypes{Unseen, Werewolf, Seer, Villager}
     
+    enum GameIs {SetUpOnChain, PrepareDeposits, InitPlayers, AssignRoles, Night, Day}
     struct Player{
         address name;
         bool live;
@@ -448,13 +498,17 @@ contract SmartWerewolf {
     }
 
 
-   struct KillConditions{
+    struct KillConditions{
         uint iAmWerewolf;
         uint iAmLive;
         uint victimLive;
     }
    
-
+    struct Time{
+        GameIs phase;
+        uint day;
+        //PlayersAre playerEvent;
+	}
     event debug(uint i);
     
     event JoinPlayer(

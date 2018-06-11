@@ -55,6 +55,10 @@ contract('SmartWerewolf', function(accounts) {
     var RoleTypes = [Unseen,Werewolf,Seer,Villager]// # => string
 
     const POINT = {"point":true}
+    const GameIs = Object.freeze({SetUpOnChain:-1, PrepareDeposits:0, InitPlayers:1, AssignRoles:2, Night:3, Day:4})
+    console.log("GameIs",GameIs)
+    var Time = { phase: GameIs.SetUpOnChain, day:-1, game:-1 }
+    var sig = {}
     var pokerKeys = [
         0, 
         0x1e6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36da4e974d162f,
@@ -65,6 +69,7 @@ contract('SmartWerewolf', function(accounts) {
         0x62d052c865f5763aad42add43856927612345678a00062d36b2bae914d58b8c8]
     var selfRoles = []
 
+    //depreciated
     const generateZKProof = function () {
         // generate zk here
         return 123
@@ -468,7 +473,9 @@ contract('SmartWerewolf', function(accounts) {
              
     }
     
-    
+    async function publishState(currentState){
+
+    }
 
     
     //game execute
@@ -501,8 +508,6 @@ contract('SmartWerewolf', function(accounts) {
             console.log("\t\t\t[players] << deposits[",playerName,"] = ",str(deposits[playerName],{}))
         }
     })
-
-
 
     it("can engage players",async function(){
         console.log("\tEngage players !")
@@ -562,9 +567,7 @@ contract('SmartWerewolf', function(accounts) {
             living[i] = living[i].toNumber()
     })
 
-   
-    it("can assign roles",async function(){    
-        console.log("\tAssign role of player randomly !")
+    it("can design card face",async function(){
         console.log("\n\t\t** choose card face")
         let i
         for(i=0; i<=n; i++){
@@ -572,7 +575,6 @@ contract('SmartWerewolf', function(accounts) {
             deck[i] = cardData[0]
             let cardHash = cardData[1]
             roleOf[cardHash.toString(16)] = cardData[2]
-            console.log("")
             console.log(
                 op("off-chain","w"),
                 "create",i,"th card: ",
@@ -588,49 +590,56 @@ contract('SmartWerewolf', function(accounts) {
                 "==>",
                 RoleTypes [roleOf[cardHash.toString(16)]]
             )
-            
         }
-        werewolfCard = quickWerewolfCard()//player remember each card face 
-        
+        werewolfCard = quickWerewolfCard()//player remember each card face
+    })
+    
+    /*
+    it("can shuffle and deal",async function(){
         console.log("\t** shuffle and deal cards")
         console.log(op("off-chain","w"),"modify state of deck and players")
         // skip shuffle and deal, read hand from disk 
-        /*
+        
+        console.log("showing details ...")
         //console.log("shuffle")
-        for(i=1; i<= n; i++){
+        for(let i=1; i<= n; i++){
                 console.log("Player",i,"is shuffling the deck ...")
                 deck = await werewolf.quickShuffleCardBy(i, pokerKeys[i],deck, n)
-                console.log(str(deck[3],{"point":true}))
+                for(let j=1;j<=n;j++)
+                    console.log(str(deck[j],{"point":true}))
             }
-        
+
         //console.log("deal card, prepare hands to disk")
         let initialHands = []
-        for (i=1; i<=n; i++){
+        for (let i=1; i<=n; i++){
             initialHands[i] = quickDealCardTo(i)// This is a ref to deck
             console.log("\nDeal card")
             console.log(str(initialHands[i],{"point":true}))
             console.log("to player",i)
         }
+
         //console.log("recover card, write hands to disk")
         let j
-        for(i=1; i<=n; i++){
-                console.log("\nPlayer",i,"recover her card")
-                for(j=1;j<=n;j++){
-                    console.log("\twith Player",j,"\'s help")
-                    initialHands[i] = await werewolf.helpDecryptRole(j, pokerKeys[j], i, initialHands[i])
-                    console.log("==>",str(initialHands[i], POINT))
-                }
+        for(let i=1; i<=n; i++){
+            console.log("\nPlayer",i,"recover her card")
+            for(j=1;j<=n;j++){
+                console.log("\twith Player",j,"\'s help")
+                initialHands[i] = await werewolf.helpDecryptRole(j, pokerKeys[j], i, initialHands[i])
+                console.log("==>",str(initialHands[i], POINT))
             }
+        }
 
         console.log("write to disk")
         let outStrHands = ""
-        for(i=1; i<=n; i++){
+        for(let i=1; i<=n; i++){
             let initialHand = "0x"+initialHands[i][0].toString(16)+","+"0x"+initialHands[i][1].toString(16)+"\n"
             outStrHands += initialHand
         }
+
         await writeFile('initialHands.txt',outStrHands)
-        */
-        
+        console.log("Players succesfully generate initail hands")
+
+        console.log("\tAssign role of player randomly !")
         let inStrHands
         try{
             inStrHands = await readFile("C:\\Users\\eason\\Documents\\GitHub\\SmartWerewolf\\initialHands.txt","utf8")
@@ -639,9 +648,9 @@ contract('SmartWerewolf', function(accounts) {
         }catch(err){
             console.log("error",err)
         }
-        
+
         let start = 0
-        for(i = 1; i<=n; i++){
+        for(let i = 1; i<=n; i++){
             let camma = inStrHands.indexOf(",",start)
             let endline = inStrHands.indexOf("\n",start)
             let x = new myBigNumber(inStrHands.substring(start, camma),16)
@@ -649,7 +658,36 @@ contract('SmartWerewolf', function(accounts) {
             players[i].hand = [x,y]
             start = endline + 1
         }
+    })
+    */
+    
+    it("skip shuffle and deal",async function(){
+        console.log("\t** shuffle and deal cards")
+        console.log(op("off-chain","w"),"modify state of deck and players")
+        
+        console.log("\tAssign role of player randomly !")
 
+        let inStrHands
+        try{
+            inStrHands = await readFile("C:\\Users\\eason\\Documents\\GitHub\\SmartWerewolf\\initialHands.txt","utf8")
+            //readFile return the whole texts 
+            //(not the arguments passed to readFile's call back)
+        }catch(err){
+            console.log("error",err)
+        }
+
+        let start = 0
+        for(let i = 1; i<=n; i++){
+            let camma = inStrHands.indexOf(",",start)
+            let endline = inStrHands.indexOf("\n",start)
+            let x = new myBigNumber(inStrHands.substring(start, camma),16)
+            let y = new myBigNumber(inStrHands.substring(camma +1, endline), 16)
+            players[i].hand = [x,y]
+            start = endline + 1
+        }
+    })
+
+    it("can check self role",async function(){    
         console.log("\t** Everyone can check his role")
         console.log("\t\t           role (secret)\tpokerKey (secret)\t\thand (public)")
         for(let i=1; i<=n; i++){
