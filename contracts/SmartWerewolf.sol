@@ -16,7 +16,7 @@ contract SmartWerewolf {
     uint public n;
     uint[2] G;
     mapping (address => uint) public playerNumOf;
-    mapping(bytes32 => uint) public roleOf;
+    mapping(uint => uint) public roleOf;
     mapping(address => uint) public deposits;
     
     //up-to-date report (change in game)
@@ -206,6 +206,8 @@ contract SmartWerewolf {
         view 
         returns(uint[2][] outDeck){
         //encrypt each card
+        if(pokerKey>q)
+        	return;//user should check his key 
         uint printBack = pokerKey;
         outDeck = new uint[2][](1+numCards); 
         for(uint k=0; k<=numCards; k++){
@@ -276,7 +278,7 @@ contract SmartWerewolf {
         return (result[0],result[1]);
     }
 
-    function checkRoleOf(uint[2] card) public view returns(uint) {return roleOf[keccak256(card)];}
+    function checkRoleOf(uint[2] card) public view returns(uint) {return roleOf[cardToNumber(card)];}
 
     function getHandOf(address name) public view returns(uint[2] hand){
         uint i = playerNumOf[name];
@@ -292,7 +294,7 @@ contract SmartWerewolf {
         (cardX, cardY) = (deck[1][0], deck[1][1]);
     }
 
-    function hashCard(uint[2] card) public pure returns(uint){return uint(keccak256(card));}
+    function cardToNumber(uint[2] card) public pure returns(uint){return uint(keccak256(card));}
     
     function cardOrder() public pure returns(uint) {return q;}
     
@@ -337,7 +339,7 @@ contract SmartWerewolf {
 
      function generateMap(uint[2] card, RoleTypes role) internal {
         
-        roleOf[keccak256(card)] = uint(role);
+        roleOf[cardToNumber(card)] = uint(role);
     
     }
 
@@ -440,55 +442,181 @@ contract SmartWerewolf {
     }
     */
     /*
-    function updateState(){
+    function updateStates(
+    	bool[] currentLives,
+        uint[2][] currentHands,
+        uint[] currentRoles,
+        uint[] currentPokerKeys,
+        
+        uint[] currentCardNumbers,
+        
+        uint currentRoom,
+        uint currentDay,
+        GameIs currentPhase,
+        
+        uint[] currentDeposits
+    )
+    	public
+    {
+    	//other check, e,g, total deposits
     	require(verifyStateMessage()==True);
-    	updatePlayersState(lives, hands, roles, pokerKeys);
-
+    	updatePlayers(lives, hands, roles, pokerKeys);
+    	updateRoleOfList(roleCards);
+    	updateGameClock(currentPhase, currentDay);
+    	updateDeposits(currentDeposits);
     }
+    */
     
-    function updatePlayersState(
+    function updatePlayers(
     	//address[] names,
         bool[] lives,
         uint[2][] hands,
         uint[] roles,
         uint[] pokerKeys
     ) 
-    	public 
+    	internal 
     {
     	for(uint i=1;i<=n;i++){
     		players[i].live = lives[i];
     		(players[i].hand[0], players[i].hand[1])= (hands[i][0],hands[i][1]);
-    		players[i].role = roles[i];
+    		players[i].role = RoleTypes(roles[i]);
     		players[i].pokerKey = pokerKeys[i];
     	}
     }
-	*/
+	
     function updateRoleOfList(
-		uint[2][] roleCards
+		uint[] currentCardNumbers
     ) 
-    	public 
+    	internal 
     {
-    	generateMap(roleCards[0], RoleTypes.Unseen);
-        generateMap(roleCards[1], RoleTypes.Werewolf);
-        generateMap(roleCards[2], RoleTypes.Werewolf);
-        generateMap(roleCards[3], RoleTypes.Seer);
-        for (uint j = 4; j <= n; j++) {
-            generateMap(roleCards[j], RoleTypes.Villager);
-        }
+    	roleOf[currentCardNumbers[0]] = uint(RoleTypes.Unseen);
+    	roleOf[currentCardNumbers[1]] = uint(RoleTypes.Werewolf);
+    	roleOf[currentCardNumbers[2]] = uint(RoleTypes.Werewolf);
+    	roleOf[currentCardNumbers[3]] = uint(RoleTypes.Seer);
+        	for (uint j = 4; j <= n; j++) {
+        		roleOf[currentCardNumbers[j]] = uint(RoleTypes.Villager);
+        	}
     }
 
-    function signState(){
-
+    function updateGameClock(
+    	uint currentRoom,
+    	uint currentDay, 
+		GameIs currentPhase 
+    ) 
+    	internal 
+    {
+    	gameClock.room = currentRoom;
+    	gameClock.day = currentDay;
+    	gameClock.phase = currentPhase;
     }
 
-    function verifyStateMessage(bytes stateMessage){
+    function updateDeposits(
+		uint[] currentDeposits
+    ) 
+    	internal 
+    {
+    	for(uint i=1;i<=n;i++){
+    		address p = players[i].name;
+    		deposits[p] = currentDeposits[i];
+    	}
+    }
 
+    function quickHashStates(
+    	bool[] currentLives,
+        uint[2][] currentHands,
+        uint[] currentRoles,
+        uint[] currentPokerKeys,
+
+        uint[] currentCardNumbers,
+        
+        uint currentRoom,
+        uint currentDay,
+        GameIs currentPhase,
+        
+        uint[] currentDeposits
+    )
+    	public 
+    	view 
+    	returns(uint statesHash)
+    {
+    	statesHash = uint(
+    		keccak256(
+	    		currentLives,
+	        	currentHands,
+	        	currentRoles,
+	        	currentPokerKeys,
+	        	currentCardNumbers,
+	        	currentRoom,
+	        	currentDay,
+	        	currentPhase,
+	        	currentDeposits
+        	)
+        );
+    }
+
+    function verifyStatesHash(
+    	bool[] currentLives,
+        uint[2][] currentHands,
+        uint[] currentRoles,
+        uint[] currentPokerKeys,
+
+        uint[] currentCardNumbers,
+        
+        uint currentRoom,
+        uint currentDay,
+        GameIs currentPhase,
+        
+        uint[] currentDeposits,
+
+        uint statesHash
+    )
+    	internal 
+    	view
+    	returns(bool result)
+    {
+    	uint verifierHash = quickHashStates(
+    		currentLives,
+        	currentHands,
+        	currentRoles,
+        	currentPokerKeys,
+        	currentCardNumbers,
+        	currentRoom,
+        	currentDay,
+        	currentPhase,
+        	currentDeposits
+        );
+        return (statesHash == verifierHash);
+    }
+
+   /* XXXXX function signStates(
+    	bool[] currentLives,
+        uint[2][] currentHands,
+        uint[] currentRoles,
+        uint[] currentPokerKeys,
+
+        uint[] currentCardNumbers,
+        
+        uint currentRoom,
+        uint currentDay,
+        GameIs currentPhase,
+        
+        uint[] currentDeposits
+    )
+    	public 
+    	view 
+    	returns(bytes32 hashStates, uint8 v, bytes32 r, bytes32 s)
+    {
+    	return 
+    }
+*/
+    function verifyStates(bytes stateMessage){
     }
     
     
     enum RoleTypes{Unseen, Werewolf, Seer, Villager}
     
     enum GameIs {SetUpOnChain, PrepareDeposits, InitPlayers, AssignRoles, Night, Day}
+    
     struct Player{
         address name;
         bool live;
@@ -505,8 +633,9 @@ contract SmartWerewolf {
     }
    
     struct Time{
-        GameIs phase;
+        uint room;
         uint day;
+        GameIs phase;
         //PlayersAre playerEvent;
 	}
     event debug(uint i);

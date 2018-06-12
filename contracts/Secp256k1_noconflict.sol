@@ -14,7 +14,7 @@ library Secp256k1_noconflict {
     uint constant Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
 
     // Order of G
-    //uint constant nn = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
+    uint constant nn = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
 
     // Cofactor
     // uint constant hh = 1;
@@ -251,7 +251,6 @@ library Secp256k1_noconflict {
     // Params: d, Px, Py
     // Output: Jacobian Q
     function _mul(uint d, uint[2] memory P) internal view returns (uint[3] memory Q) {
-        //debug: (Q[0],Q[1],Q[2]) = (2,3,4);
         uint p = pp;
         if (d == 0) // TODO
             return;
