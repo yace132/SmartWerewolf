@@ -26,5 +26,8 @@ module.exports = {
       network_id: "*", // Match any network id
       gas: 100000000
     },
+  },
+  mocha: {
+    enableTimeouts: false
   }
 };
