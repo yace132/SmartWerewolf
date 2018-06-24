@@ -452,31 +452,46 @@ contract SmartWerewolf {
 	    return (handBack[0] == claimHand[0]) && (handBack[1] == claimHand[1]);
 	}
 	*/
-	/*
+	
 	function updateStates(
 		bool[] currentLives,
 	    uint[2][] currentHands,
 	    uint[] currentRoles,
 	    uint[] currentPokerKeys,
-	    
 	    uint[] currentCardNumbers,
-	    
 	    uint currentRoom,
-	    uint currentDay,
+	    int currentDay,
 	    GameIs currentPhase,
+	    uint[] currentDeposits,
 	    
-	    uint[] currentDeposits
+	    bytes32 statesHash,
+	    
+	    address playerName,
+		uint8 v,
+		bytes32 r,
+		bytes32 s
 	)
 		public
 	{
 		//other check, e,g, total deposits
-		require(verifyStateMessage()==True);
-		updatePlayers(lives, hands, roles, pokerKeys);
-		updateRoleOfList(roleCards);
-		updateGameClock(currentPhase, currentDay);
-		updateDeposits(currentDeposits);
+		require(verifyStatesHash(
+			currentLives, 
+			currentHands, 
+			currentRoles, 
+			currentPokerKeys,
+			currentCardNumbers,
+			currentRoom,
+			currentDay,
+			currentPhase, 
+			currentDeposits,
+			statesHash
+			) //&& playerName == verifyStatesMessage(playerName, statesHash, v, r, s)
+		);
+		updatePlayers(currentLives, currentHands, currentRoles, currentPokerKeys);
+		/*updateRoleOfList(currentCardNumbers);
+		updateGameClock(currentRoom, currentDay, currentPhase);
+		updateDeposits(currentDeposits);*/
 	}
-	*/
 
 	function updatePlayers(
 		//address[] names,
@@ -490,7 +505,7 @@ contract SmartWerewolf {
 		for(uint i=1;i<=n;i++){
 			players[i].live = lives[i];
 			(players[i].hand[0], players[i].hand[1])= (hands[i][0],hands[i][1]);
-			players[i].role = RoleTypes(roles[i]);
+			//players[i].role = RoleTypes(roles[i]);
 			players[i].pokerKey = pokerKeys[i];
 		}
 	}
@@ -541,16 +556,16 @@ contract SmartWerewolf {
 		uint[] currentCardNumbers,
 
 		uint currentRoom,
-		uint currentDay,
+		int currentDay,
 		GameIs currentPhase,
 
 		uint[] currentDeposits
 		)
 	public 
 	view 
-	returns(uint statesHash)
+	returns(bytes32 statesHash)
 	{
-		statesHash = uint(
+		statesHash = //uint(
 			keccak256(
 				currentLives,
 				currentHands,
@@ -561,8 +576,8 @@ contract SmartWerewolf {
 				currentDay,
 				currentPhase,
 				currentDeposits
-				)
 			);
+		//);
 	}
 
 	function verifyStatesHash(
@@ -574,18 +589,18 @@ contract SmartWerewolf {
 		uint[] currentCardNumbers,
 
 		uint currentRoom,
-		uint currentDay,
+		int currentDay,
 		GameIs currentPhase,
 
 		uint[] currentDeposits,
 
-		uint statesHash
+		bytes32 statesHash
 		)
-	internal 
+	public/*internal*/ 
 	view
 	returns(bool result)
 	{
-		uint verifierHash = quickHashStates(
+		bytes32 verifierHash = quickHashStates(
 			currentLives,
 			currentHands,
 			currentRoles,
@@ -608,9 +623,10 @@ contract SmartWerewolf {
 		)
 	public 
 	view 
-	returns(bool)
+	returns(address)
 	{
-		return ecrecover(statesMessage,v,r,s) == playerName;
+		return /*ecrecover(statesMessage,v,r,s) == playerName;*/
+		ecrecover(statesMessage,v,r,s);
 	}
 
 	function verifyStates(bytes stateMessage){
