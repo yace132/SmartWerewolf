@@ -59,7 +59,7 @@ contract('SmartWerewolf', function(accounts) {
     var gameClock = { room:0, day:-1, phase: GameIs.Sleep }
     var sig = {}
     
-    var pokerKeys = [
+    const pokerKeys = [
         web3.toBigNumber(0), 
         web3.toBigNumber(0x10000e5ccbfb04590405997ee2d52d2b330726137b875053c36da4e974d162f),
         web3.toBigNumber(0x200008e4a1235a6d2687f1a7e3ba17bc98c673636790f1b8ad91cc3c05875ef1),
@@ -498,10 +498,10 @@ contract('SmartWerewolf', function(accounts) {
 
     //return multiple array
     function playersToChain(){
-        let currentLives = [] 
-        let currentHands = []
-        let currentRoles = []
-        let currentPokerKeys =[]
+        let currentLives = [false] 
+        let currentHands = [[0,0]]
+        let currentRoles = [0]
+        let currentPokerKeys =[0]
         for(let i=1;i<=n;i++){
             currentLives[i] = players[i].live
             currentHands[i]= [players[i].hand[0], players[i].hand[1]]
@@ -548,7 +548,7 @@ contract('SmartWerewolf', function(accounts) {
             currentPhase,
             currentDeposits
         } = states
-        console.log({currentRoles})
+        console.log({currentLives},{currentPokerKeys},{currentRoles})
         await werewolf.updateStates(
             currentLives, 
             currentHands, 
@@ -634,7 +634,7 @@ contract('SmartWerewolf', function(accounts) {
                 name: playerName,
                 live: playerLive,
                 hand: playerHand,
-                role: RoleTypes.indexOf(playerRole),
+                role: playerRole,//Or this?  RoleTypes.indexOf(playerRole),
                 pokerKey: playerKey
             }
 
@@ -790,7 +790,7 @@ contract('SmartWerewolf', function(accounts) {
     })
 
     it("can check self role",async function(){
-        console.log("\t** Everyone can check his role")
+        console.log("\t** Everyone can decrypt his role")
         console.log("\t\t           role (secret)\tpokerKey (secret)\t\thand (public)")
         //console.log({roleOf})
         for(let i=1; i<=n; i++){
@@ -908,7 +908,7 @@ contract('SmartWerewolf', function(accounts) {
     it("can verify states sig",async function(){
         let currentStates = statesToChain()
         let {statesMessage, rOfStatesSig, sOfStatesSig, vOfStatesSig} = await signStatesToChain(players[1].name,currentStates)
-        statesMessage="0x12345"
+        //statesMessage="0x12345"
         console.log({statesMessage},"send to verify")
         let sigResult = await werewolf.verifyStatesMessage(players[2].name, 
             statesMessage, 
@@ -933,6 +933,23 @@ contract('SmartWerewolf', function(accounts) {
             sOfStatesSig, 
             vOfStatesSig
         )
+        for(let i=1; i<=5; i++){
+            let keywordJoinPlayer = werewolf.JoinPlayer({outPlayerNum:i})
+                let JoinPlayerLog = await searchLog(keywordJoinPlayer)
+                let playerNum = JoinPlayerLog.outPlayerNum
+                let playerName = JoinPlayerLog.outPlayerName
+                let playerLive = JoinPlayerLog.outPlayerLive
+                let playerHand = JoinPlayerLog.outPlayerHand
+                let playerRole = RoleTypes[JoinPlayerLog.outPlayerRole]
+                let playerKey = JoinPlayerLog.outPlayerKey
+                console.log("\t\t\t[ chain ] >> player",str(playerNum,{}),
+                    "\n\t\t\t\tname:",playerName,
+                    "\n\t\t\t\tlive:",playerLive,
+                    "\n\t\t\t\thand:",str(playerHand,{"point":true}),
+                    "\n\t\t\t\trole:",playerRole,
+                    "\n\t\t\t\tpokerKey:",str(playerKey,{})
+                    )
+        }
     })
     
     xit("Day 2 :  dayVoting",async function(){

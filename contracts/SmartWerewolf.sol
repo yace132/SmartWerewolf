@@ -456,7 +456,7 @@ contract SmartWerewolf {
 	function updateStates(
 		bool[] currentLives,
 	    uint[2][] currentHands,
-	    uint[] currentRoles,
+	    uint8[] currentRoles,
 	    uint[] currentPokerKeys,
 	    uint[] currentCardNumbers,
 	    uint currentRoom,
@@ -497,7 +497,7 @@ contract SmartWerewolf {
 		//address[] names,
 		bool[] lives,
 		uint[2][] hands,
-		uint[] roles,
+		uint8[] roles,
 		uint[] pokerKeys
 		) 
 	internal 
@@ -505,8 +505,18 @@ contract SmartWerewolf {
 		for(uint i=1;i<=n;i++){
 			players[i].live = lives[i];
 			(players[i].hand[0], players[i].hand[1])= (hands[i][0],hands[i][1]);
-			//players[i].role = RoleTypes(roles[i]);
+			players[i].role = RoleTypes(roles[i]);
 			players[i].pokerKey = pokerKeys[i];
+			emit JoinPlayer(
+				//for mapping
+				i,
+				//for players 
+				players[i].name, 
+				players[i].live, 
+				[uint((players[i].hand)[0]),(players[i].hand)[1]], 
+				players[i].role, 
+				players[i].pokerKey
+			);
 		}
 	}
 
@@ -550,7 +560,7 @@ contract SmartWerewolf {
 	function quickHashStates(
 		bool[] currentLives,
 		uint[2][] currentHands,
-		uint[] currentRoles,
+		uint8[] currentRoles,
 		uint[] currentPokerKeys,
 
 		uint[] currentCardNumbers,
@@ -583,7 +593,7 @@ contract SmartWerewolf {
 	function verifyStatesHash(
 		bool[] currentLives,
 		uint[2][] currentHands,
-		uint[] currentRoles,
+		uint8[] currentRoles,
 		uint[] currentPokerKeys,
 
 		uint[] currentCardNumbers,
@@ -625,6 +635,8 @@ contract SmartWerewolf {
 	view 
 	returns(address)
 	{
+		bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        statesMessage = keccak256(prefix, statesMessage);
 		return /*ecrecover(statesMessage,v,r,s) == playerName;*/
 		ecrecover(statesMessage,v,r,s);
 	}
