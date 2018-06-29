@@ -55,6 +55,7 @@ contract('SmartWerewolf', function(accounts) {
     var RoleTypes = [Unseen,Werewolf,Seer,Villager]// # => string
 
     const POINT = {"point":true}
+    const HEX = {"hex":true}
     const GameIs = Object.freeze({ Sleep: 0 , Awake: 1 , DepositsReady: 2, PlayersReady: 3, CardsReady: 4, Night: 5, Day: 6})
     var gameClock = { room:0, day:-1, phase: GameIs.Sleep }
     var sig = {}
@@ -169,13 +170,16 @@ contract('SmartWerewolf', function(accounts) {
         let result
         if(tag["point"]){
             result = [str(objBN[0],{}),str(objBN[1],{})]
+        }else if(tag["hex"]){
+            stringBN = objBN
+            result = stringBN.slice(0,8)+"..."
         }else{        
             if(objBN <=1000){
                 stringBN = objBN.toString(10)
                 result = stringBN
             }else{
                 stringBN = objBN.toString(16)
-                result = "0x"+stringBN[0]+stringBN[1]+stringBN[2]+stringBN[3]+stringBN[4]+stringBN[5]+"..."
+                result = "0x"+stringBN.slice(0,6)+"..."
             }
         }
         return result
@@ -484,7 +488,6 @@ contract('SmartWerewolf', function(accounts) {
     async function signStatesToChain(name, states){
         let statesHash = await hashStatesToChain(states)
         let statesMessage = statesHash
-        console.log({statesMessage},"in signStatesToChain()")
         let statesSig = web3.eth.sign(name, statesMessage)
 
         let rOfStatesSig = statesSig.slice(0, 66)
@@ -508,12 +511,22 @@ contract('SmartWerewolf', function(accounts) {
             currentRoles[i] = RoleTypes.indexOf(players[i].role)
             currentPokerKeys[i] = players[i].pokerKey
         }
+        console.log({lives: currentLives})
+        let hands = currentHands.map(hand => str(hand,POINT))
+        console.log({hands})
+        let roles = currentRoles.map(role => RoleTypes[role] )
+        console.log({roles})
+        let keys = currentPokerKeys.map(key => str(key,{}))
+        console.log({keys})
         return {currentLives, currentHands, currentRoles, currentPokerKeys}
     }
 
     //return card number array
     function cardNumbersToChain(){
-        return Object.keys(roleOf).map(cardNumString => new myBigNumber(cardNumString,16))
+        let stringCardNumbers = Object.keys(roleOf)
+        let bnCardNumbers = stringCardNumbers.map(cardNumString => new myBigNumber(cardNumString,16))
+        console.log({cardNumbers: stringCardNumbers.map(cardNum => str(cardNum,HEX))})
+        return bnCardNumbers
     }
     
     //return object
@@ -521,12 +534,16 @@ contract('SmartWerewolf', function(accounts) {
         let currentRoom = gameClock.room
         let currentDay = gameClock.day
         let currentPhase = gameClock.phase
+        let phase = Object.keys(GameIs).find( key => GameIs[key] === currentPhase )
+        console.log({room: currentRoom},{day:currentDay}, {phase})
         return {currentRoom, currentDay, currentPhase}
     }
 
     //return array
     function depositsToChain(){
-        return Object.values(deposits)
+        let currentDeposits = [0].concat(Object.values(deposits))
+        console.log({deposits:currentDeposits})
+        return currentDeposits
     }
 
     async function updateStatesToChain(
@@ -548,7 +565,6 @@ contract('SmartWerewolf', function(accounts) {
             currentPhase,
             currentDeposits
         } = states
-        console.log({currentLives},{currentPokerKeys},{currentRoles})
         await werewolf.updateStates(
             currentLives, 
             currentHands, 
@@ -586,7 +602,7 @@ contract('SmartWerewolf', function(accounts) {
         n = playerNames.length
         var i
         for(i=0; i<n; i++){
-            console.log("\n\t\t** player",i+1,"prepare deposit $100")
+            console.log("\n\t\t** player",i+1,"prepare deposit")
             let p = playerNames[i]
             let v = 100+i
             console.log(title(3)+opNoTab("on-chain","w"),"player",p,"send",v)
@@ -595,10 +611,10 @@ contract('SmartWerewolf', function(accounts) {
             let keywordDeposit = werewolf.Deposit({outPlayerName: p})
             let DepositLog = await searchLog(keywordDeposit)
             let playerName = DepositLog.outPlayerName
-            let value = DepositLog.outValue
-            console.log("\t\t\t[ chain ] >> deposits[",playerName,"] = ",str(value,{}))
+            let value = DepositLog.outValue.toNumber()
+            console.log("\t\t\t[ chain ] >> deposits[",playerName,"] = ",value)
             deposits[playerName] = value 
-            console.log("\t\t\t[players] << deposits[",playerName,"] = ",str(deposits[playerName],{}))
+            console.log("\t\t\t[players] << deposits[",playerName,"] = ",deposits[playerName])
         }
         //check current time from chain
     })
@@ -691,7 +707,7 @@ contract('SmartWerewolf', function(accounts) {
     })
     
     
-    xit("can shuffle and deal",async function(){
+    xit("write shuffle and deal",async function(){
         console.log("\t** shuffle and deal cards")
         console.log(op("off-chain","w"),"modify state of deck and players")
         // skip shuffle and deal, read hand from disk 
@@ -736,31 +752,10 @@ contract('SmartWerewolf', function(accounts) {
 
         await writeFile('initialHands.txt',outStrHands)
         console.log("Players succesfully generate initail hands")
-
-        console.log("\tAssign role of player randomly !")
-        let inStrHands
-        try{
-            inStrHands = await readFile(__dirname+"\\initialHands.txt","utf8")
-            //readFile return the whole texts 
-            //(not the arguments passed to readFile's call back)
-        }catch(err){
-            console.log("error",err)
-        }
-
-        let start = 0
-        for(let i = 1; i<=n; i++){
-            let camma = inStrHands.indexOf(",",start)
-            let endline = inStrHands.indexOf("\n",start)
-            let x = new myBigNumber(inStrHands.substring(start, camma),16)
-            let y = new myBigNumber(inStrHands.substring(camma +1, endline), 16)
-            players[i].hand = [x,y]
-            console.log("hhhhhhhhhhhhhhhhand",str(players[i].hand,POINT))
-            start = endline + 1
-        }
     })
     
     
-    it("skip shuffle and deal",async function(){
+    it("read shuffle and deal",async function(){
         console.log("\t** shuffle and deal cards")
         console.log(op("off-chain","w"),"modify state of deck and players")
         
@@ -786,30 +781,58 @@ contract('SmartWerewolf', function(accounts) {
         }
 
         gameClock.phase = GameIs.CardsReady
-        //gameClock.day = 1
+        gameClock.day = 1
+        gameClock.phase = GameIs.Night
     })
 
-    it("can check self role",async function(){
+    xit("write self role",async function(){
+        //add write
+        console.log("write to disk")
+        let outStrHands = ""
+        
         console.log("\t** Everyone can decrypt his role")
-        console.log("\t\t           role (secret)\tpokerKey (secret)\t\thand (public)")
-        //console.log({roleOf})
         for(let i=1; i<=n; i++){
             let hand = players[i].hand
-            //console.log("player",i)
-            //console.log("hand(back)",str(hand,POINT))
             let roleCard = await werewolf.recoverRole(i, selfDecryptKeys[i], players[i].hand)
-            //console.log("roleCard(face)",str(roleCard,POINT))
-            selfRoles[i] = roleCard
-            let cardHash = await werewolf.cardToNumber(roleCard)
-            //console.log("card #",str(cardHash,{}))
-            let role = RoleTypes[roleOf[cardHash.toString(16)]]
-            //console.log({role})
-            //console.log("roleOf",roleOf[cardHash.toString(16)])
-            console.log(title(2)+"player "+i+" : "+role+"\t\t"+str(pokerKeys[i],{})+"\t\t"
-                +str(hand,{"point":true}))
-        }      
+            
+            //add write
+            let decryptHand = "0x"+roleCard[0].toString(16)+","+"0x"+roleCard[1].toString(16)+"\n"
+            outStrHands += decryptHand
+        }
+        
+        // add write
+        await writeFile("decryptHands.txt",outStrHands)
+        console.log("Players succesfully generate self hands")
     })
-  
+
+    it("read self role",async function(){
+        let inStrHands
+        try{
+            inStrHands = await readFile(__dirname+"\\decryptHands.txt","utf8")
+        }catch(err){
+            console.log("error",err)
+        }
+
+        let start = 0
+        for(let i = 1; i<=n; i++){
+            let camma = inStrHands.indexOf(",",start)
+            let endline = inStrHands.indexOf("\n",start)
+            let x = new myBigNumber(inStrHands.substring(start, camma),16)
+            let y = new myBigNumber(inStrHands.substring(camma +1, endline), 16)
+            selfRoles[i] = [x,y]
+            start = endline + 1
+        }
+
+        console.log("\t\t           role (secret)\tpokerKey (secret)\t\thand (public)")
+        for(let i =1;i<=n;i++){
+            let roleCard = selfRoles[i]
+            let cardHash = await werewolf.cardToNumber(roleCard)
+            let role = RoleTypes[roleOf[cardHash.toString(16)]]
+            console.log(title(2)+"player "+i+" : "+role+"\t\t"+str(pokerKeys[i],{})+"\t\t"
+                +str(players[i].hand,{"point":true}))
+        }
+    })
+
     xit("werewolf can create proof of knowledge",async function(){
         console.log("\tIt's Night 1 ! Werewolf will kill a person !")
         let {pfs, victimNum} = await quickCreatePoK(1, pokerKeys[1], 4)
@@ -827,15 +850,13 @@ contract('SmartWerewolf', function(accounts) {
     })
     
     xit("werewolf can kill",async function(){
-        gameClock.day = 1
-        gameClock.phase = CardsReady
 
         let result = await quickNightKill(publishVictim, publishProofs)
         if(result != true){
             console.log("\n"+title(2)+"** Reject the proof: not werewolf or provide wrong victim !")
             console.log("\n"+title(2)+"** Kill failed ! May go to on-chain resolution")
         }
-
+        gameClock.phase = GameIs.Day
     })
 
     xit("can open role",async function(){
@@ -851,7 +872,7 @@ contract('SmartWerewolf', function(accounts) {
     })
     
     it("Day 1 :  dayVoting",async function(){
-        gameClock.phase = GameIs.Day
+        
 
         console.log(title(1)+"Convenient test day voting !")
         let i = 2
@@ -868,6 +889,8 @@ contract('SmartWerewolf', function(accounts) {
         else
             console.log(title(2)+"** open role: failed !")
         if(winner)console.log(title(2)+"winner",winner)
+        gameClock.day ++
+        //gameClock.phase = GameIs.Night
     })
 
     xit("can sign current states",async function(){
@@ -905,26 +928,23 @@ contract('SmartWerewolf', function(accounts) {
         console.log({hashResult})    
     })
 
-    it("can verify states sig",async function(){
+    xit("can verify states sig",async function(){
         let currentStates = statesToChain()
-        let {statesMessage, rOfStatesSig, sOfStatesSig, vOfStatesSig} = await signStatesToChain(players[1].name,currentStates)
-        //statesMessage="0x12345"
-        console.log({statesMessage},"send to verify")
+        let {statesMessage, rOfStatesSig, sOfStatesSig, vOfStatesSig} = await signStatesToChain(players[2].name,currentStates)
         let sigResult = await werewolf.verifyStatesMessage(players[2].name, 
             statesMessage, 
             vOfStatesSig,
             rOfStatesSig,
             sOfStatesSig
         )
-        console.log({sigResult},players[1].name)
     })
 
-    it("can update states ",async function(){
+    xit("can update states ",async function(){
         let currentStates = statesToChain()
         let statesHash = await hashStatesToChain(currentStates)
-        let p = players[1].name
+        let p = players[2].name
         let {statesMessage, rOfStatesSig, sOfStatesSig, vOfStatesSig} = await signStatesToChain(p,currentStates)
-        console.log({statesMessage, rOfStatesSig, sOfStatesSig, vOfStatesSig})
+
         await updateStatesToChain(
             currentStates, 
             statesHash, 
@@ -933,23 +953,7 @@ contract('SmartWerewolf', function(accounts) {
             sOfStatesSig, 
             vOfStatesSig
         )
-        for(let i=1; i<=5; i++){
-            let keywordJoinPlayer = werewolf.JoinPlayer({outPlayerNum:i})
-                let JoinPlayerLog = await searchLog(keywordJoinPlayer)
-                let playerNum = JoinPlayerLog.outPlayerNum
-                let playerName = JoinPlayerLog.outPlayerName
-                let playerLive = JoinPlayerLog.outPlayerLive
-                let playerHand = JoinPlayerLog.outPlayerHand
-                let playerRole = RoleTypes[JoinPlayerLog.outPlayerRole]
-                let playerKey = JoinPlayerLog.outPlayerKey
-                console.log("\t\t\t[ chain ] >> player",str(playerNum,{}),
-                    "\n\t\t\t\tname:",playerName,
-                    "\n\t\t\t\tlive:",playerLive,
-                    "\n\t\t\t\thand:",str(playerHand,{"point":true}),
-                    "\n\t\t\t\trole:",playerRole,
-                    "\n\t\t\t\tpokerKey:",str(playerKey,{})
-                    )
-        }
+
     })
     
     xit("Day 2 :  dayVoting",async function(){
@@ -967,6 +971,47 @@ contract('SmartWerewolf', function(accounts) {
         else
             console.log(title(2)+"** open role: failed !")
         if(winner)console.log(title(2)+"winner",winner)
+        gameClock.day ++
+        //gameClock.phase = GameIs.Night
+    })
+
+    it("Day 2 :  dayVoting, What happend if one vote many times",async function(){
+        //gameClockToChain()
+        let j = 5
+        let v = 3
+        let badGuy = players[j].name
+        let victim = players[v].name
+        console.log("BEFORE states")
+        statesToChain()
+        console.log(str(badGuy,HEX),"send 5 votes to",str(victim,HEX),"reject!")
+
+        console.log("We take bad guy's $...")
+        let d = deposits[players[j].name]
+        for(let i = 1; i<=n; i++)
+            {
+                if(i==j)
+                    deposits[players[i].name] = d % (n-1)
+                else deposits[players[i].name] += Math.floor( d/(n-1) )
+            }
+        depositsToChain()
+        console.log("We can use sig of",str(badGuy,HEX),"delete misbihave player",str(badGuy,HEX))
+        console.log("We prepare new game and reset players...")
+        for(let i=1; i<=n; i++){
+            if(i==j)
+                players[i].live = false
+            else players[i].live = true
+            players[i].hand=[0,0]
+            players[i].role = Unseen
+            players[i].pokerKey = 0
+        }
+        playersToChain()  
+        console.log("And change to new room...")
+        gameClock.room ++
+        gameClock.day = -1
+        gameClock.phase = GameIs.PlayersReady
+        gameClockToChain()
+        console.log("TODO Also, we clear roleOf list...")
+        
     })
 
     xit("Day 3 :  dayVoting",async function(){
@@ -984,6 +1029,8 @@ contract('SmartWerewolf', function(accounts) {
         else
             console.log(title(2)+"** open role: failed !")
         if(winner)console.log(title(2)+"winner",winner)
+        gameClock.day ++
+        //gameClock.phase = GameIs.Night
     })
 
     xit("Day 4 :  dayVoting",async function(){
@@ -1001,6 +1048,8 @@ contract('SmartWerewolf', function(accounts) {
         else
             console.log(title(2)+"** open role: failed !")
         if(winner)console.log(title(2)+"winner",winner)
+        gameClock.day ++
+        //gameClock.phase = GameIs.Night
     })
 
     after(  async ()=> {     

@@ -101,13 +101,13 @@ contract SmartWerewolf {
 		for (i = 1; i <= n; i++) {
 			players[i] = Player
 			(
-			{
-				name: inPlayerNames[ i-1 ],  
-				live: true, 
-				hand: [uint(0),0], 
-				role: RoleTypes.Unseen,
-				pokerKey: 0
-			}
+				{
+					name: inPlayerNames[ i-1 ],  
+					live: true, 
+					hand: [uint(0),0], 
+					role: RoleTypes.Unseen,
+					pokerKey: 0
+				}
 			);
 
 			emit JoinPlayer(
@@ -452,7 +452,30 @@ contract SmartWerewolf {
 	    return (handBack[0] == claimHand[0]) && (handBack[1] == claimHand[1]);
 	}
 	*/
-	
+	function accuse(
+		bool[] currentLives,
+	    uint[2][] currentHands,
+	    uint8[] currentRoles,
+	    uint[] currentPokerKeys,
+	    uint[] currentCardNumbers,
+	    uint currentRoom,
+	    int currentDay,
+	    GameIs currentPhase,
+	    uint[] currentDeposits,
+	    
+	    bytes32 evidence,
+	    
+	    address suspect,
+		uint8 v,
+		bytes32 r,
+		bytes32 s
+
+	)
+		public
+	{
+		require(verifyStatesMessage(suspect, evidence, v, r, s));
+	}
+
 	function updateStates(
 		bool[] currentLives,
 	    uint[2][] currentHands,
@@ -485,12 +508,12 @@ contract SmartWerewolf {
 			currentPhase, 
 			currentDeposits,
 			statesHash
-			) //&& playerName == verifyStatesMessage(playerName, statesHash, v, r, s)
+			) && verifyStatesMessage(playerName, statesHash, v, r, s)
 		);
 		updatePlayers(currentLives, currentHands, currentRoles, currentPokerKeys);
-		/*updateRoleOfList(currentCardNumbers);
+		updateRoleOfList(currentCardNumbers);
 		updateGameClock(currentRoom, currentDay, currentPhase);
-		updateDeposits(currentDeposits);*/
+		updateDeposits(currentDeposits);
 	}
 
 	function updatePlayers(
@@ -575,7 +598,7 @@ contract SmartWerewolf {
 	view 
 	returns(bytes32 statesHash)
 	{
-		statesHash = //uint(
+		statesHash = 
 			keccak256(
 				currentLives,
 				currentHands,
@@ -587,7 +610,6 @@ contract SmartWerewolf {
 				currentPhase,
 				currentDeposits
 			);
-		//);
 	}
 
 	function verifyStatesHash(
@@ -633,16 +655,30 @@ contract SmartWerewolf {
 		)
 	public 
 	view 
-	returns(address)
+	returns(bool)
 	{
-		bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+		/*bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         statesMessage = keccak256(prefix, statesMessage);
-		return /*ecrecover(statesMessage,v,r,s) == playerName;*/
-		ecrecover(statesMessage,v,r,s);
+		return ecrecover(statesMessage,v,r,s) == playerName;*/
+		return verifyMessage(playerName, statesMessage, v,r,s);
 	}
 
-	function verifyStates(bytes stateMessage){
+	function verifyMessage(
+		address name,
+		bytes32 message,
+		uint8 v,
+		bytes32 r,
+		bytes32 s
+		)
+	public 
+	view 
+	returns(bool)
+	{
+		bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        statesMessage = keccak256(prefix, message);
+		return ecrecover(message,v,r,s) == name;
 	}
+
 
 
 	enum RoleTypes{Unseen, Werewolf, Seer, Villager}
