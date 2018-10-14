@@ -621,7 +621,7 @@ contract('SmartWerewolf', function(accounts) {
 
     it("can engage players",async function(){
         console.log("\tEngage players !")
-        console.log(title(2)+op("on-chain","w"),"admin",admin,"\tengage players")
+        console.log(title(2)+opNoTab("on-chain","w"),"admin",admin,"\tengage players")
         await werewolf.quickEngagePlayers(playerNames,{from:admin})
         
         let PlayerReady = werewolf.PlayerReady()
@@ -833,7 +833,7 @@ contract('SmartWerewolf', function(accounts) {
         }
     })
 
-    xit("werewolf can create proof of knowledge",async function(){
+    it("werewolf can create proof of knowledge",async function(){
         console.log("\tIt's Night 1 ! Werewolf will kill a person !")
         let {pfs, victimNum} = await quickCreatePoK(1, pokerKeys[1], 4)
 
@@ -849,7 +849,7 @@ contract('SmartWerewolf', function(accounts) {
         assert(typeof publishProofs != "undefined","can't await quickCreatePoK")
     })
     
-    xit("werewolf can kill",async function(){
+    it("werewolf can kill",async function(){
 
         let result = await quickNightKill(publishVictim, publishProofs)
         if(result != true){
@@ -859,7 +859,7 @@ contract('SmartWerewolf', function(accounts) {
         gameClock.phase = GameIs.Day
     })
 
-    xit("can open role",async function(){
+    it("can open role",async function(){
         console.log(title(1)+"The victim should open his role !")
         let i = 4
         let p = players[i]
@@ -975,7 +975,7 @@ contract('SmartWerewolf', function(accounts) {
         //gameClock.phase = GameIs.Night
     })
 
-    it("Day 2 :  dayVoting, What happend if one vote many times",async function(){
+    xit("Day 2 :  dayVoting, What happend if one vote many times",async function(){
         //gameClockToChain()
         let j = 5
         let v = 3

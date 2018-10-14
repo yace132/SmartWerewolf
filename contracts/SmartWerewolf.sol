@@ -675,7 +675,7 @@ contract SmartWerewolf {
 	returns(bool)
 	{
 		bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        statesMessage = keccak256(prefix, message);
+        //statesMessage = keccak256(prefix, message);
 		return ecrecover(message,v,r,s) == name;
 	}
 
