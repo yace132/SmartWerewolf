@@ -1,20 +1,13 @@
 'use strict'
 const PoK = artifacts.require("./OrPoK.sol")
 const programWerewolf = artifacts.require("./SmartWerewolf.sol")
+
 const myBigNumber = require('BigNumber.js')
 myBigNumber.config({ MODULO_MODE: myBigNumber.EUCLID })
 const fs = require('fs')
 const { promisify } = require('util')
 const writeFile = promisify(fs.writeFile) 
 const readFile = promisify(fs.readFile)
-/*
-
-const readline = require('readline');
-const getLine = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-})
-*/
 
 
 //run truffle migration
@@ -840,8 +833,10 @@ contract('SmartWerewolf', function(accounts) {
         publishProofs = pfs
         publishVictim = players[victimNum].name
         console.log("\t\t** Werewolf publishes PoK ")
-        //for(let i=1;i<=n;i++)
-        //    print(publishProofs[i])
+        /**
+         * for(let i=1;i<=n;i++)
+         *    print(publishProofs[i])
+         */
         let j = playerNumOf[publishVictim]
         console.log("\t\t   with message : I want to kill player", j)
         console.log("\t",op("off-chain","w"),"...")
